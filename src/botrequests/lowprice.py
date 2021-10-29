@@ -2,13 +2,13 @@ import requests
 import json
 from decouple import config
 from typing import List, Optional
-
+from datetime import date, timedelta
 RAPIDAPI_KEY = config('RAPIDAPI_KEY')
 
 headers = {
     'x-rapidapi-host': "hotels4.p.rapidapi.com",
     'x-rapidapi-key': RAPIDAPI_KEY
-    }
+}
 
 
 def get_city_id(city: str) -> str:
@@ -35,10 +35,13 @@ def get_properties_list(city: str) -> List[dict]:
     :param city: город, в котором будем искать отели
     :return:  список отелей, в котором хранится информация о каждом отеле
     """
-
+    today = date.today()
+    check_in = str(today + timedelta(days=2))
+    check_out = str(today + timedelta(days=3))
     url = "https://hotels4.p.rapidapi.com/properties/list"
-    querystring = {"destinationId": get_city_id(city), "pageNumber": "1", "pageSize": "25", "checkIn": "2021-10-25",
-                   "checkOut": "2021-10-26", "adults1": "1", "sortOrder": "PRICE", "locale": "ru_RU", "currency": "RUB"}
+
+    querystring = {"destinationId": get_city_id(city), "pageNumber": "1", "pageSize": "25", "checkIn": check_in,
+                   "checkOut": check_out, "adults1": "1", "sortOrder": "PRICE", "locale": "ru_RU", "currency": "RUB"}
 
     response_properties_list: json = requests.request("GET", url, headers=headers, params=querystring)
     data: json = json.loads(response_properties_list.text)
@@ -47,18 +50,42 @@ def get_properties_list(city: str) -> List[dict]:
     return full_list_hotels
 
 
-def get_hotels_info(list_hotels: List[dict], number: int) -> List[dict]:
+def get_photo(id_hotel: str, number: str) -> List[str]:
+    """
+    Получаем адрес фотографии по ID отеля
+    :param number: количество фотографий отеля
+    :param id_hotel: id Отеля
+    :return: адрес фотографии
+    """
+    url = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
+    querystring = {"id": id_hotel}
+    headers = {
+        'x-rapidapi-host': "hotels4.p.rapidapi.com",
+        'x-rapidapi-key': "cf28b9b5f4msh99bf4fc4d214049p10f79fjsn930a3a0855d4"
+    }
+    response_photo: json = requests.request("GET", url, headers=headers, params=querystring)
+    data: json = json.loads(response_photo.text)
+    list_photo = []
+    for photo in range(int(number)):
+        adrress_photo = data['hotelImages'][photo]['baseUrl']
+        adrress_photo = adrress_photo.replace('{size}', 'b')
+        list_photo.append(adrress_photo)
+    return list_photo
+
+
+def get_hotels_info(list_hotels: List[dict], number_hotel: int, photo: bool, number_photo: str) -> List[dict]:
     """
     Финальная функция. Создает список словарей, которые включают в себя информацию, которую будем выводить пользователю
     по каждому отелю. Число отелей определает пользователь.
     Сначала мы вы берем необходимые значения из list_hotels, потом присваиваем их новому словарю. На каждой итерации
     цикла мы добавляем созданный словарь в список top
 
+    :param number_photo:
+    :param photo: необходимость фото
     :param list_hotels: List[dict] - лист 25 отелей, полученный с функции get_properties_list
-    :param number:  кол-во отелей, которое пользователь хочет увидеть в результате
+    :param number_hotel:  кол-во отелей, которое пользователь хочет увидеть в результате
     :return:  список из number словарей, в каждом словаре информация по одному отелю
     """
-
     count = 0
     top = []
     for hotel in list_hotels:
@@ -69,17 +96,31 @@ def get_hotels_info(list_hotels: List[dict], number: int) -> List[dict]:
             address: Optional[str] = hotel['address']['streetAddress']
         except KeyError:
             address: Optional[str] = None
-        distance_to_center: str = hotel['landmarks'][0]['distance']  # возможно не центр, надо делать проверку
+        distance_to_center: str = hotel['landmarks'][0]['distance']
         price: str = hotel['ratePlan']['price']['current']
         hotel_info['name']: str = name
         hotel_info['addres']: str = address
         hotel_info['distance_to_center']: str = distance_to_center
         hotel_info['price']: str = price
+        if photo:
+            hotel_info['photo']: List[str] = get_photo(hotel['id'], number_photo)
         top.append(hotel_info)
-        if count == number:
+        if count == number_hotel:
             break
     return top
 
+
+# a = get_properties_list('москва')
+# b = get_hotels_info(a, 5, photo=True)
+# print(b)
+# for i in range(5):
+#     print('Название отеля: {name}\n'
+#                                            'Адрес: {address}\n'
+#                                            'Расстояние до центра: {dist}\n'
+#                                            'Цена: {price}'.format(name=b[i]['name'],
+#                                                                   address=b[i]['addres'],
+#                                                                   dist=b[i]['distance_to_center'],
+#                                                                   price=b[i]['price']))
 
 # def get_hotels_info(list_hotels):
 #     """
@@ -101,13 +142,9 @@ def get_hotels_info(list_hotels: List[dict], number: int) -> List[dict]:
 #             name=name, adress=adress, distance_to_center=distance_to_center, price=price
 #         ))
 #         if count == 5:
-#             break #
-
-
-# id = get_city_id()
+#             break
+#
+#
+# id = get_city_id('москва')
 # hotels = get_properties_list(id)
 # get_hotels_info(hotels)
-
-
-
-
