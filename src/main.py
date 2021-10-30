@@ -39,8 +39,14 @@ def ask_number_hotels(message: types.Message):
     :param message: город
     """
     city: str = message.text
-    count_of_hotels: types.Message = bot.send_message(message.chat.id, 'Сколько отелей вывести в результат?'
-                                                                       '(не более 10)')
+    keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                         resize_keyboard=True,
+                                         input_field_placeholder='не более 9 отелей')
+    keyboard.row('1', '2', '3')
+    keyboard.row('4', '5', '6')
+    keyboard.row('7', '8', '9')
+    count_of_hotels: types.Message = bot.send_message(message.chat.id, 'Сколько отелей вывести в результат?',
+                                                      reply_markup=keyboard)
     bot.register_next_step_handler(count_of_hotels, ask_photo, city)
 
 
@@ -56,10 +62,16 @@ def ask_photo(message: types.Message, city: str):
     """
     try:
         count_of_hotels = int(message.text)
-        if count_of_hotels > 10:
-            count_of_hotels = 10
-        photo_desire: types.Message = bot.send_message(message.chat.id, 'Хотите увидеть фотографии отелей?')
+        if count_of_hotels > 9:
+            count_of_hotels = 9
+        keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                             resize_keyboard=True,
+                                             input_field_placeholder='да/нет')
+        keyboard.row('да', 'нет')
+        photo_desire: types.Message = bot.send_message(message.chat.id, 'Хотите увидеть фотографии отелей?',
+                                                       reply_markup=keyboard)
         bot.register_next_step_handler(photo_desire, ask_number_photo, count_of_hotels, city)
+        types.ReplyKeyboardRemove()
     except ValueError:
         bot.reply_to(message, 'Это должно быть число. Попробуйте еще раз.')
         ask_number_hotels(message)
@@ -77,7 +89,13 @@ def ask_number_photo(message: types.Message, count_of_hotels: int, city: str):
     if message.text.lower() == 'нет':
         show_result(message, count_of_hotels, city)
     elif message.text.lower() == 'да':
-        number_photo: types.Message = bot.reply_to(message, 'Сколько? (не более 7)')
+        keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                             resize_keyboard=True,
+                                             input_field_placeholder='не более 9 фотографий')
+        keyboard.row('1', '2', '3')
+        keyboard.row('4', '5', '6')
+        keyboard.row('7', '8', '9')
+        number_photo: types.Message = bot.reply_to(message, 'Сколько?', reply_markup=keyboard)
         photo: bool = True
         bot.register_next_step_handler(number_photo, show_result, count_of_hotels, city, photo)
     else:
@@ -89,17 +107,14 @@ def show_result(message: types.Message, count_of_hotels: int, city: str, photo: 
     """
     Выводим результат перед этим проверим кол-во фотографий, если больше допустимого, тот принудительно меняем число.
 
-    :param message:
-    :param count_of_photo:
+    :param message: если фотографии нужны тот тут кол-во фоторгафий, если они не нужны тот тут "нет"
     :param photo: необходимость фотографий
     :param city: город
     :param count_of_hotels: количество отелей
     """
     count_of_photo: str = message.text
-    if int(count_of_photo) > 7:
-        count_of_photo = '7'
-    if not count_of_photo.isdigit():
-        number_photo: types.Message = bot.reply_to(message, 'Введиче число (но не более 7)')
+    if not count_of_photo.isdigit() and photo:
+        number_photo: types.Message = bot.reply_to(message, 'Введиче число!')
         bot.register_next_step_handler(number_photo, show_result, count_of_hotels, city, photo)
     else:
         bot.send_message(message.chat.id, 'Обзваниваю отели. Подождите, пожалуйста')
@@ -107,6 +122,8 @@ def show_result(message: types.Message, count_of_hotels: int, city: str, photo: 
         hotels: List[dict] = lowprice.get_hotels_info(hotels, count_of_hotels, photo, count_of_photo)
         for i in range(count_of_hotels):
             if photo:
+                if int(count_of_photo) > 9:
+                    count_of_photo = '9'
                 for p in range(int(count_of_photo)):
                     bot.send_photo(message.chat.id, hotels[i]['photo'][p])
             bot.send_message(message.from_user.id, 'Название отеля: {name}\n'
@@ -144,4 +161,3 @@ bot.infinity_polling()
 #                                                                       address=hotels[i]['addres'],
 #                                                                       dist=hotels[i]['distance_to_center'],
 #                                                                       price=hotels[i]['price']))
-

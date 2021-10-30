@@ -80,7 +80,7 @@ def get_hotels_info(list_hotels: List[dict], number_hotel: int, photo: bool, num
     Сначала мы вы берем необходимые значения из list_hotels, потом присваиваем их новому словарю. На каждой итерации
     цикла мы добавляем созданный словарь в список top
 
-    :param number_photo:
+    :param number_photo: количество фотографий
     :param photo: необходимость фото
     :param list_hotels: List[dict] - лист 25 отелей, полученный с функции get_properties_list
     :param number_hotel:  кол-во отелей, которое пользователь хочет увидеть в результате
