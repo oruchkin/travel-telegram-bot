@@ -73,21 +73,21 @@ def get_photo(id_hotel: str, number: str) -> List[str]:
     return list_photo
 
 
-def get_hotels_info(list_hotels: List[dict], number_hotel: int, photo: bool, number_photo: str) -> List[dict]:
+def get_hotels_info(user) -> List[dict]:
     """
     Финальная функция. Создает список словарей, которые включают в себя информацию, которую будем выводить пользователю
     по каждому отелю. Число отелей определает пользователь.
+    В функции get_properties_list мы берем список 25 отелей и присваиваем его list_hotels
     Сначала мы вы берем необходимые значения из list_hotels, потом присваиваем их новому словарю. На каждой итерации
     цикла мы добавляем созданный словарь в список top
 
-    :param number_photo: количество фотографий
-    :param photo: необходимость фото
+    :param user:
     :param list_hotels: List[dict] - лист 25 отелей, полученный с функции get_properties_list
-    :param number_hotel:  кол-во отелей, которое пользователь хочет увидеть в результате
     :return:  список из number словарей, в каждом словаре информация по одному отелю
     """
     count = 0
     top = []
+    list_hotels = get_properties_list(user.city)
     for hotel in list_hotels:
         hotel_info = dict()
         count += 1
@@ -102,10 +102,10 @@ def get_hotels_info(list_hotels: List[dict], number_hotel: int, photo: bool, num
         hotel_info['addres']: str = address
         hotel_info['distance_to_center']: str = distance_to_center
         hotel_info['price']: str = price
-        if photo:
-            hotel_info['photo']: List[str] = get_photo(hotel['id'], number_photo)
+        if user.photo:
+            hotel_info['photo']: List[str] = get_photo(hotel['id'], user.count_of_photo)
         top.append(hotel_info)
-        if count == number_hotel:
+        if count == user.count_of_hotels:
             break
     return top
 
