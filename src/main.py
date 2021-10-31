@@ -156,10 +156,11 @@ def show_result(message: types.Message, user):
         for i in range(user.count_of_hotels):
 
             if user.photo:
-                if int(user.count_of_photo) > 9:
-                    user.count_of_photo = '9'
-                for p in range(int(user.count_of_photo)):
-                    bot.send_photo(message.chat.id, hotels[i]['photo'][p])
+                bot.send_media_group(message.chat.id, hotels[i]['photo'])
+
+            site_button = types.InlineKeyboardMarkup()
+            origin_button = types.InlineKeyboardButton(text='Забронировать номер', url=hotels[i]['booking'])
+            site_button.add(origin_button)
 
             bot.send_message(message.from_user.id, 'Название отеля: {name}\n'
                                                    'Адрес: {address}\n'
@@ -167,7 +168,8 @@ def show_result(message: types.Message, user):
                                                    'Цена: {price}'.format(name=hotels[i]['name'],
                                                                           address=hotels[i]['addres'],
                                                                           dist=hotels[i]['distance_to_center'],
-                                                                          price=hotels[i]['price']))
+                                                                          price=hotels[i]['price']),
+                             reply_markup=site)
 
 
 bot.infinity_polling()

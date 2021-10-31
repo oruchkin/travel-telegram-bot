@@ -1,3 +1,4 @@
+from telebot import types
 import requests
 import json
 from decouple import config
@@ -50,7 +51,7 @@ def get_properties_list(city: str) -> List[dict]:
     return full_list_hotels
 
 
-def get_photo(id_hotel: str, number: str) -> List[str]:
+def get_photo(id_hotel: str, number: str) -> json:
     """
     Получаем адрес фотографии по ID отеля
     :param number: количество фотографий отеля
@@ -69,7 +70,7 @@ def get_photo(id_hotel: str, number: str) -> List[str]:
     for photo in range(int(number)):
         adrress_photo = data['hotelImages'][photo]['baseUrl']
         adrress_photo = adrress_photo.replace('{size}', 'b')
-        list_photo.append(adrress_photo)
+        list_photo.append(types.InputMediaPhoto(adrress_photo))
     return list_photo
 
 
@@ -82,7 +83,6 @@ def get_hotels_info(user) -> List[dict]:
     цикла мы добавляем созданный словарь в список top
 
     :param user:
-    :param list_hotels: List[dict] - лист 25 отелей, полученный с функции get_properties_list
     :return:  список из number словарей, в каждом словаре информация по одному отелю
     """
     count = 0
@@ -92,6 +92,8 @@ def get_hotels_info(user) -> List[dict]:
         hotel_info = dict()
         count += 1
         name: str = hotel['name']
+        id_hotel = str(hotel['id'])
+        booking = ''.join(['https://ru.hotels.com/ho', id_hotel])
         try:
             address: Optional[str] = hotel['address']['streetAddress']
         except KeyError:
@@ -102,6 +104,7 @@ def get_hotels_info(user) -> List[dict]:
         hotel_info['addres']: str = address
         hotel_info['distance_to_center']: str = distance_to_center
         hotel_info['price']: str = price
+        hotel_info['booking']: str = booking
         if user.photo:
             hotel_info['photo']: List[str] = get_photo(hotel['id'], user.count_of_photo)
         top.append(hotel_info)
