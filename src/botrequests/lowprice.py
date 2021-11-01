@@ -4,12 +4,41 @@ import json
 from decouple import config
 from typing import List, Optional
 from datetime import date, timedelta
+import re
 RAPIDAPI_KEY = config('RAPIDAPI_KEY')
 
 headers = {
     'x-rapidapi-host': "hotels4.p.rapidapi.com",
     'x-rapidapi-key': RAPIDAPI_KEY
 }
+
+
+def delete_span(string: str):
+    pattern_1 = r"<span class='highlighted'>"
+    pattern_2 = r"</span>"
+    repl = ''
+    res_1 = re.sub(pattern_1, repl, string)
+    res_2 = re.sub(pattern_2, repl, res_1)
+    return res_2
+
+
+def check_city(city: str):
+    """
+    Делаем запрос и проверяем, все результаты ([имя города, id Города]) с type: 'CITY' записываем в список list_cities
+    :param city:
+    :return:
+    """
+    url = "https://hotels4.p.rapidapi.com/locations/search"
+    querystring = {"query": city, "locale": "ru_RU"}
+    response_city_id: json = requests.request("GET", url, headers=headers, params=querystring)
+    data: json = json.loads(response_city_id.text)
+    entities = data['suggestions'][0]['entities']
+    list_cities = []
+    for entity in entities:
+        if entity['type'] == 'CITY':
+            full_name = delete_span(entity['caption'])
+            list_cities.append([full_name, entity['destinationId']])
+    return list_cities
 
 
 def get_city_id(city: str) -> str:

@@ -39,7 +39,7 @@ def send_low_price_hotels(message):
     user = User(message.chat.id)
     user.command = 'lowprice'
     city: types.Message = bot.send_message(message.chat.id, 'Где ищем?')
-    bot.register_next_step_handler(city, ask_number_hotels, user)
+    bot.register_next_step_handler(city, check_city, user)
 
 
 @bot.message_handler(commands=['highprice'])
@@ -52,6 +52,28 @@ def send_low_price_hotels(message):
     user.command = 'highprice'
     city: types.Message = bot.send_message(message.chat.id, 'Где ищем?')
     bot.register_next_step_handler(city, ask_number_hotels, user)
+
+
+def check_city(message: types.Message, user):
+    """
+    Парсим по запрошенному город и предлагаем пользователю выбрать из всех совпадений которые найдены в API
+    В cities у нас находится список [[full_city_name, id_city], [full_city_name, id_city], [full_city_name, id_city]..]
+
+    :param message: запрошенный город
+    """
+    cities_button = types.InlineKeyboardMarkup()
+    user.city = message.text
+    cities = lowprice.check_city(user.city)
+    for city in cities:
+        button = types.InlineKeyboardButton(text=city[0], callback_data=city[1], user=user)
+        cities_button.add(button)
+    bot.send_message(message.chat.id, 'Выберите город:', reply_markup=cities_button)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def answer(call):
+    print(call.message)
+    print(call.data)
 
 
 def ask_number_hotels(message: types.Message, user):
