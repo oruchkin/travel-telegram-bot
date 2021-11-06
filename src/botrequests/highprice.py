@@ -93,10 +93,6 @@ def get_photo(id_hotel: str, number: str) -> json:
     """
     url = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
     querystring = {"id": id_hotel}
-    headers = {
-        'x-rapidapi-host': "hotels4.p.rapidapi.com",
-        'x-rapidapi-key': "cf28b9b5f4msh99bf4fc4d214049p10f79fjsn930a3a0855d4"
-    }
     response_photo: json = requests.request("GET", url, headers=headers, params=querystring)
     data: json = json.loads(response_photo.text)
     list_photo = []

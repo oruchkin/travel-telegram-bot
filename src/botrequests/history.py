@@ -1,5 +1,6 @@
 import sqlite3
 import datetime
+from typing import List
 
 connect = sqlite3.connect('database.db', check_same_thread=False)
 cursor = connect.cursor()
@@ -11,7 +12,11 @@ cursor.execute("CREATE TABLE IF NOT EXISTS users("
                "id_city INTEGER,"
                "count_of_hotels INTEGER,"
                "photo bool,"
-               "count_of_photo INTEGER)")
+               "count_of_photo INTEGER,"
+               "top_price TEXT,"
+               "lower_price TEXT,"
+               "top_dist TEXT,"
+               "lower_dist TEXT)")
 cursor.execute("CREATE TABLE IF NOT EXISTS cities(id_city TEXT, city TEXT)")
 
 
@@ -38,7 +43,7 @@ def get_command(id_user):
     По id пользователя возвращаем его команду
     :return: str команда
     """
-    cursor.execute("SELECT command FROM users WHERE id_user=?", (id_user, ))
+    cursor.execute("SELECT command FROM users WHERE id_user=?", (id_user,))
     command = cursor.fetchone()
     return command[0]
 
@@ -49,7 +54,7 @@ def create_city(city, id_city):
     :param city: название города
     :param id_city: id города
     """
-    cursor.execute("SELECT id_city FROM cities WHERE id_city=?", (id_city, ))
+    cursor.execute("SELECT id_city FROM cities WHERE id_city=?", (id_city,))
     if not cursor.fetchone():
         sql = "INSERT INTO cities(id_city, city) VALUES(?, ?)"
         cursor.execute(sql, (id_city, city))
@@ -61,7 +66,7 @@ def get_city(id_city):
     По id Города возвращаем из базы его полное название
     :return: str название города
     """
-    cursor.execute("SELECT city FROM cities WHERE id_city=?", (id_city, ))
+    cursor.execute("SELECT city FROM cities WHERE id_city=?", (id_city,))
     city = cursor.fetchone()
     return city[0]
 
@@ -118,7 +123,7 @@ def get_count_of_photo(id_user):
     По id пользователя кол-во фотографий
     :return: str команда
     """
-    cursor.execute("SELECT count_of_photo FROM users WHERE id_user=?", (id_user, ))
+    cursor.execute("SELECT count_of_photo FROM users WHERE id_user=?", (id_user,))
     count_of_photo = cursor.fetchone()
     return count_of_photo[0]
 
@@ -128,7 +133,7 @@ def get_count_of_hotels(id_user):
     По id пользователя кол-во отелей
     :return: str команда
     """
-    cursor.execute("SELECT count_of_hotels FROM users WHERE id_user=?", (id_user, ))
+    cursor.execute("SELECT count_of_hotels FROM users WHERE id_user=?", (id_user,))
     count_of_hotels = cursor.fetchone()
     return count_of_hotels[0]
 
@@ -138,7 +143,7 @@ def get_id_city_user(id_user):
     По id пользователя id города
     :return: str команда
     """
-    cursor.execute("SELECT id_city FROM users WHERE id_user=?", (id_user, ))
+    cursor.execute("SELECT id_city FROM users WHERE id_user=?", (id_user,))
     id_city = cursor.fetchone()
     return id_city[0]
 
@@ -148,7 +153,48 @@ def get_photo(id_user):
     По id пользователя id города
     :return: str команда
     """
-    cursor.execute("SELECT photo FROM users WHERE id_user=?", (id_user, ))
+    cursor.execute("SELECT photo FROM users WHERE id_user=?", (id_user,))
     photo = cursor.fetchone()
     return photo[0]
 
+
+def set_price(prices: List[str], id_user):
+    """
+    Записываем в БД нижнюю и верхнюю цены.
+    :param id_user:
+    :param prices: 0 индекс - нижняя цена, 1 - верхняя
+    """
+    sql = "UPDATE users SET lower_price=?, top_price=? WHERE id_user=?"
+    cursor.execute(sql, (prices[0], prices[1], id_user))
+    connect.commit()
+
+
+def set_distance(distances: List[str], id_user):
+    """
+    Записываем в БД нижнюю и верхнюю цены.
+    :param distances: 0 - нижняя граница, 1 - верхняя
+    :param id_user:
+    """
+    sql = "UPDATE users SET lower_dist=?, top_dist=? WHERE id_user=?"
+    cursor.execute(sql, (distances[0], distances[1], id_user))
+    connect.commit()
+
+
+def get_price(id_user):
+    """
+    По id пользователя возвращаем кортеж из границ цен
+    :return: str команда
+    """
+    cursor.execute("SELECT lower_price, top_price FROM users WHERE id_user=?", (id_user,))
+    prices = cursor.fetchone()
+    return prices
+
+
+def get_distance(id_user):
+    """
+    По id пользователя возвращаем кортеж из границ дистанции от центра
+    :return: str команда
+    """
+    cursor.execute("SELECT lower_dist, top_dist FROM users WHERE id_user=?", (id_user,))
+    distances = cursor.fetchone()
+    return distances
