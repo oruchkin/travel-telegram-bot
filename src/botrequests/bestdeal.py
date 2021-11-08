@@ -58,7 +58,7 @@ def get_city_id(city):
     return city_id
 
 
-def get_properties_list(id_user, page_number) -> List[dict]:
+def get_properties_list(id_user, page_number, date_create) -> List[dict]:
     """
     Парсим API для по городу, границам цен.
     В зависимости от верхней границы расстаяния от центра парсим с разными характеристиками сортировки (если очень
@@ -69,17 +69,17 @@ def get_properties_list(id_user, page_number) -> List[dict]:
     :return: лист отелей
     """
     url = "https://hotels4.p.rapidapi.com/properties/list"
-    distances = history.get_distance(id_user)
-    prices = history.get_price(id_user)
+    distances = history.get_distance(id_user, date_create)
+    prices = history.get_price(id_user, date_create)
     today = date.today()
     check_in = str(today + timedelta(days=2))
     check_out = str(today + timedelta(days=3))
     if float(distances[1]) <= 2.5:
-        querystring = {"destinationId": history.get_id_city_user(id_user), "pageNumber": str(page_number), "pageSize": "25", "checkIn": check_in,
+        querystring = {"destinationId": history.get_id_city_user(id_user, date_create), "pageNumber": str(page_number), "pageSize": "25", "checkIn": check_in,
                        "checkOut": check_out, "adults1": "1", "priceMin": prices[0], "priceMax": prices[1],
                        "sortOrder": "DISTANCE_FROM_LANDMARK", "locale": "ru_RU", "currency": "RUB"}
     else:
-        querystring = {"destinationId": history.get_id_city_user(id_user), "pageNumber": "1", "pageSize": "25", "checkIn": check_in,
+        querystring = {"destinationId": history.get_id_city_user(id_user, date_create), "pageNumber": "1", "pageSize": "25", "checkIn": check_in,
                        "checkOut": check_out, "adults1": "1", "priceMin": prices[0], "priceMax": prices[1],
                        "sortOrder": "PRICE", "locale": "ru_RU", "currency": "RUB"}
     response_properties_list = requests.request("GET", url, headers=headers, params=querystring)
@@ -125,7 +125,7 @@ def string_to_number(string: str) -> [int, float]:
     return int(number)
 
 
-def get_hotels_info(id_user, count: int = 0, page_number: int = 1, top=None) -> List[dict]:
+def get_hotels_info(id_user, date_create, count: int = 0, page_number: int = 1, top=None) -> List[dict]:
     """
     Сортируем список по цене (сначала дешевые)
     Потом в цикле проверяем каждый отель на соответствие запрошенного расстояния от центра города.
@@ -140,8 +140,8 @@ def get_hotels_info(id_user, count: int = 0, page_number: int = 1, top=None) -> 
 
     if top is None:
         top = []
-    sorted_list_hotels = sorted(get_properties_list(id_user, page_number), key=lambda x: int(x['ratePlan']['price']['exactCurrent']))
-    distances = history.get_distance(id_user)
+    sorted_list_hotels = sorted(get_properties_list(id_user, page_number, date_create), key=lambda x: int(x['ratePlan']['price']['exactCurrent']))
+    distances = history.get_distance(id_user, date_create)
     for hotel in sorted_list_hotels:
         if float(distances[0]) <= string_to_number(hotel['landmarks'][0]['distance']) <= float(distances[1]):
             hotel_info = dict()
@@ -160,16 +160,16 @@ def get_hotels_info(id_user, count: int = 0, page_number: int = 1, top=None) -> 
             hotel_info['distance_to_center']: str = distance_to_center
             hotel_info['price']: str = price
             hotel_info['booking']: str = booking
-            if history.get_count_of_photo(id_user):
-                hotel_info['photo']: List[str] = get_photo(hotel['id'], history.get_count_of_photo(id_user))
+            if history.get_count_of_photo(id_user, date_create):
+                hotel_info['photo']: List[str] = get_photo(hotel['id'], history.get_count_of_photo(id_user, date_create))
             top.append(hotel_info)
-            if count == history.get_count_of_hotels(id_user):
+            if count == history.get_count_of_hotels(id_user, date_create):
                 break
 
     if page_number == configs.page_number:
         return top
 
-    if count < history.get_count_of_hotels(id_user):
+    if count < history.get_count_of_hotels(id_user, date_create):
         page_number += 1
         get_hotels_info(id_user, count, page_number, top)
 

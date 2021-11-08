@@ -1,6 +1,10 @@
+import sqlite3
 import datetime
+from typing import List
+import re
 
 datetime_now = datetime.datetime.now()
-date_1 = datetime_now.strftime('%H:%M - %d.%m.%Y')
-print(datetime_now)
-print(date_1)
+date = datetime_now.strftime('%H:%M:%S - %d.%m.%Y')
+a = 'asdfd'
+print(type(date))
+print(type(a))

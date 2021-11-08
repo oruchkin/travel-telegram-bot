@@ -100,7 +100,7 @@ def get_photo(id_hotel: str, number: str) -> json:
     return list_photo
 
 
-def get_hotels_info(id_user) -> List[dict]:
+def get_hotels_info(id_user, date_create) -> List[dict]:
     """
     Финальная функция. Создает список словарей, которые включают в себя информацию, которую будем выводить пользователю
     по каждому отелю. Число отелей определает пользователь.
@@ -113,7 +113,7 @@ def get_hotels_info(id_user) -> List[dict]:
     """
     count = 0
     top = []
-    list_hotels = get_properties_list(history.get_id_city_user(id_user))
+    list_hotels = get_properties_list(history.get_id_city_user(id_user, date_create))
     for hotel in list_hotels:
         hotel_info = dict()
         count += 1
@@ -131,10 +131,10 @@ def get_hotels_info(id_user) -> List[dict]:
         hotel_info['distance_to_center']: str = distance_to_center
         hotel_info['price']: str = price
         hotel_info['booking']: str = booking
-        if history.get_count_of_photo(id_user):
-            hotel_info['photo']: List[str] = get_photo(hotel['id'], history.get_count_of_photo(id_user))
+        if history.get_count_of_photo(id_user, date_create):
+            hotel_info['photo']: List[str] = get_photo(hotel['id'], history.get_count_of_photo(id_user, date_create))
         top.append(hotel_info)
-        if count == history.get_count_of_hotels(id_user):
+        if count == history.get_count_of_hotels(id_user, date_create):
             break
     return top
 

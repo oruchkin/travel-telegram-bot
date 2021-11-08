@@ -32,14 +32,16 @@ def create_user(id_user, command):
     sql = "INSERT INTO users(id_user, command, date_create) VALUES(?, ?, ?)"
     cursor.execute(sql, (id_user, command, date))
     connect.commit()
+    print(type(date))
+    return date
 
 
-def get_command(id_user):
+def get_command(id_user, date_create):
     """
     По id пользователя возвращаем его команду
     :return: str команда
     """
-    cursor.execute("SELECT command FROM users WHERE id_user=?", (id_user,))
+    cursor.execute("SELECT command FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
     command = cursor.fetchone()
     return command[0]
 
@@ -67,29 +69,29 @@ def get_city(id_city):
     return city[0]
 
 
-def set_count_of_hotels(id_user, count_of_hotels):
+def set_count_of_hotels(id_user, count_of_hotels, date_create):
     """
     Записываем в БД кол-во отелей пользователя
     :param count_of_hotels: кол-во отелей
     :param id_user: id пользователя
     """
-    sql = "UPDATE users SET count_of_hotels=? WHERE id_user=?"
-    cursor.execute(sql, (count_of_hotels, id_user))
+    sql = "UPDATE users SET count_of_hotels=? WHERE id_user=? and date_create=?"
+    cursor.execute(sql, (count_of_hotels, id_user, date_create))
     connect.commit()
 
 
-def set_photo(id_user: int, photo: bool):
+def set_photo(id_user: int, photo: bool, date_create):
     """
     Записываем в БД нужны ли пользователю фотографии
     :param photo:
     :param id_user: id пользователя
     """
-    sql = "UPDATE users SET photo=? WHERE id_user=?"
-    cursor.execute(sql, (photo, id_user))
+    sql = "UPDATE users SET photo=? WHERE id_user=? and date_create=?"
+    cursor.execute(sql, (photo, id_user, date_create))
     connect.commit()
 
 
-def set_count_of_photo(id_user: int, count_of_photo: [int, str]):
+def set_count_of_photo(id_user: int, count_of_photo: [int, str], date_create):
     """
     Записываем в БД сколько фотографий нужно пользователю
     :param count_of_photo: кол-во фотографий
@@ -97,64 +99,64 @@ def set_count_of_photo(id_user: int, count_of_photo: [int, str]):
     """
     if count_of_photo == 'нет':
         count_of_photo = 0
-    sql = "UPDATE users SET count_of_photo=? WHERE id_user=?"
-    cursor.execute(sql, (count_of_photo, id_user))
+    sql = "UPDATE users SET count_of_photo=? WHERE id_user=? and date_create=?"
+    cursor.execute(sql, (count_of_photo, id_user, date_create))
     connect.commit()
 
 
-def set_city_user(id_city: int, city: str, id_user: int):
+def set_city_user(id_city: int, city: str, id_user: int, date_create: str):
     """
     Записываем в таблицу users город и id города
     :param city:
     :param id_city:
     :param id_user: id пользователя
     """
-    sql = "UPDATE users SET id_city=?, city=? WHERE id_user=?"
-    cursor.execute(sql, (id_city, city, id_user))
+    sql = "UPDATE users SET id_city=?, city=? WHERE id_user=? and date_create=?"
+    cursor.execute(sql, (id_city, city, id_user, date_create))
     connect.commit()
 
 
-def get_count_of_photo(id_user):
+def get_count_of_photo(id_user, date_create):
     """
     По id пользователя кол-во фотографий
     :return: str команда
     """
-    cursor.execute("SELECT count_of_photo FROM users WHERE id_user=?", (id_user,))
+    cursor.execute("SELECT count_of_photo FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
     count_of_photo = cursor.fetchone()
     return count_of_photo[0]
 
 
-def get_count_of_hotels(id_user):
+def get_count_of_hotels(id_user, date_create):
     """
     По id пользователя кол-во отелей
     :return: str команда
     """
-    cursor.execute("SELECT count_of_hotels FROM users WHERE id_user=?", (id_user,))
+    cursor.execute("SELECT count_of_hotels FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
     count_of_hotels = cursor.fetchone()
     return count_of_hotels[0]
 
 
-def get_id_city_user(id_user):
+def get_id_city_user(id_user, date_create):
     """
     По id пользователя id города
     :return: str команда
     """
-    cursor.execute("SELECT id_city FROM users WHERE id_user=?", (id_user,))
+    cursor.execute("SELECT id_city FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
     id_city = cursor.fetchone()
     return id_city[0]
 
 
-def get_photo(id_user):
+def get_photo(id_user, date_create):
     """
     По id пользователя id города
     :return: str команда
     """
-    cursor.execute("SELECT photo FROM users WHERE id_user=?", (id_user,))
+    cursor.execute("SELECT photo FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
     photo = cursor.fetchone()
     return photo[0]
 
 
-def set_price(prices: List[str], id_user):
+def set_price(prices: List[str], id_user, date_create):
     """
     Записываем в БД нижнюю и верхнюю цены.
     :param id_user:
@@ -164,12 +166,12 @@ def set_price(prices: List[str], id_user):
         raise ValueError
     lower_price = int(float(re.sub(',', '.', prices[0])))
     top_price = int(float(re.sub(',', '.', prices[1])))
-    sql = "UPDATE users SET lower_price=?, top_price=? WHERE id_user=?"
-    cursor.execute(sql, (lower_price, top_price, id_user))
+    sql = "UPDATE users SET lower_price=?, top_price=? WHERE id_user=? and date_create=?"
+    cursor.execute(sql, (lower_price, top_price, id_user, date_create))
     connect.commit()
 
 
-def set_distance(distances: List[str], id_user):
+def set_distance(distances: List[str], id_user, date_create):
     """
     Записываем в БД нижнюю и верхнюю цены.
     :param distances: 0 - нижняя граница, 1 - верхняя
@@ -179,27 +181,27 @@ def set_distance(distances: List[str], id_user):
         raise ValueError
     lower_distance: float = float(re.sub(',', '.', distances[0]))
     top_distance: float = float(re.sub(',', '.', distances[1]))
-    sql = "UPDATE users SET lower_dist=?, top_dist=? WHERE id_user=?"
-    cursor.execute(sql, (lower_distance, top_distance, id_user))
+    sql = "UPDATE users SET lower_dist=?, top_dist=? WHERE id_user=? and date_create=?"
+    cursor.execute(sql, (lower_distance, top_distance, id_user, date_create))
     connect.commit()
 
 
-def get_price(id_user):
+def get_price(id_user, date_create):
     """
     По id пользователя возвращаем кортеж из границ цен
     :return: str команда
     """
-    cursor.execute("SELECT lower_price, top_price FROM users WHERE id_user=?", (id_user,))
+    cursor.execute("SELECT lower_price, top_price FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
     prices = cursor.fetchone()
     return prices
 
 
-def get_distance(id_user):
+def get_distance(id_user, date_create):
     """
     По id пользователя возвращаем кортеж из границ дистанции от центра
     :return: str команда
     """
-    cursor.execute("SELECT lower_dist, top_dist FROM users WHERE id_user=?", (id_user,))
+    cursor.execute("SELECT lower_dist, top_dist FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
     distances = cursor.fetchone()
     return distances
 
