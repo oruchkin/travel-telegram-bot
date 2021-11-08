@@ -6,6 +6,7 @@ from typing import List, Optional
 from datetime import date, timedelta
 from src.botrequests import history
 import re
+from src import configs
 
 
 RAPIDAPI_KEY = config('RAPIDAPI_KEY')
@@ -162,16 +163,12 @@ def get_hotels_info(id_user, count: int = 0, page_number: int = 1, top=None) -> 
             if history.get_count_of_photo(id_user):
                 hotel_info['photo']: List[str] = get_photo(hotel['id'], history.get_count_of_photo(id_user))
             top.append(hotel_info)
-            # print('==========')
-            # print(booking)
-            # print(name)
-            # print('==========')
-            # print('найдено отелей:', count)
             if count == history.get_count_of_hotels(id_user):
                 break
 
-    if page_number == 3:
+    if page_number == configs.page_number:
         return top
+
     if count < history.get_count_of_hotels(id_user):
         page_number += 1
         get_hotels_info(id_user, count, page_number, top)

@@ -1,4 +1,5 @@
 import telebot
+from telebot import ExceptionHandler
 from decouple import config
 from src.botrequests import lowprice
 from src.botrequests import highprice
@@ -6,6 +7,7 @@ from src.botrequests import bestdeal
 from telebot import types
 from typing import List
 from src.botrequests import history
+import configs
 
 RAPIDAPI_KEY = config('RAPIDAPI_KEY')
 BOT_TOKEN = config('TOKEN')
@@ -67,9 +69,12 @@ def send_high_price_hotels(message):
     """
     Выдаем результат последнего запроса (история)
     """
-    bot.send_message(message.chat.id, 'Команда: {}\nГород: {}\nПодождите немного, перепроверю цены, вдруг изменились.'.
-                     format(history.get_command(message.chat.id), history.get_city_user(message.chat.id)[0]))
-    show_result(message.chat.id)
+    try:
+        bot.send_message(message.chat.id, 'Послединй запрос: {}\nКоманда: {}\nГород: {}\nПодождите немного, перепроверю цены, вдруг изменились.'.
+                         format(history.get_date(message.chat.id), history.get_command(message.chat.id), history.get_city_user(message.chat.id)[0]))
+        show_result(message.chat.id)
+    except TypeError:
+        bot.send_message(message.chat.id, 'От вашего аккаунта ранее не поступало запросов')
 
 
 def check_city(message: types.Message):
@@ -182,8 +187,8 @@ def ask_photo(message: types.Message):
     """
     try:
         count_of_hotels = int(message.text)
-        if count_of_hotels > 9:
-            count_of_hotels = 9
+        if count_of_hotels > configs.count_of_hotels:
+            count_of_hotels = configs.count_of_hotels
         history.set_count_of_hotels(message.chat.id, count_of_hotels)
         keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
                                              resize_keyboard=True,
@@ -231,8 +236,8 @@ def check_count_of_photo(message: types.Message):
 
     if (count_of_photo.isdigit() and history.get_photo(message.chat.id)) or \
             (count_of_photo == 'нет' and not history.get_photo(message.chat.id)):
-        if count_of_photo.isdigit() and int(count_of_photo) > 9:
-            count_of_photo = 9
+        if count_of_photo.isdigit() and int(count_of_photo) > configs.count_of_photo:
+            count_of_photo = configs.count_of_photo
         history.set_count_of_photo(message.chat.id, count_of_photo)
         bot.send_message(message.chat.id, 'Обзваниваю отели. Подождите, пожалуйста',
                          reply_markup=types.ReplyKeyboardRemove())
@@ -280,4 +285,12 @@ def dont_understand(message: types.Message):
     bot.reply_to(message, "Я вас не понимаю, введите /help для помощи")
 
 
-bot.infinity_polling()
+def main():
+    try:
+        bot.polling(none_stop=True)
+    except Exception:
+        main()
+
+
+if __name__ == '__main__':
+    main()

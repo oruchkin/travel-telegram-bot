@@ -6,7 +6,7 @@ import re
 connect = sqlite3.connect('database.db', check_same_thread=False)
 cursor = connect.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS users("
-               "id_user INTEGER NOT NULL PRIMARY KEY,"
+               "id_user INTEGER NOT NULL,"
                "command TEXT,"
                "date_create TEXT,"
                "city TEXT,"
@@ -29,9 +29,10 @@ def create_user(id_user, command):
     """
     cursor.execute("SELECT id_user FROM users WHERE id_user=?", (id_user,))
     datetime_now = datetime.datetime.now()
+    date = datetime_now.strftime('%H:%M - %d.%m.%Y')
     if not cursor.fetchone():
         sql = "INSERT INTO users(id_user, command, date_create) VALUES(?, ?, ?)"
-        cursor.execute(sql, (id_user, command, datetime_now))
+        cursor.execute(sql, (id_user, command, date))
         connect.commit()
     else:
         sql = "UPDATE users SET command = ?, date_create = ? WHERE id_user = ?"
@@ -227,3 +228,13 @@ def get_city_user(id_user):
     cursor.execute("SELECT city FROM users WHERE id_user=?", (id_user,))
     city = cursor.fetchone()
     return city
+
+
+def get_date(id_user):
+    """
+    По id пользователя время последнего запроса
+    :return: str команда
+    """
+    cursor.execute("SELECT date_create FROM users WHERE id_user=?", (id_user,))
+    date = cursor.fetchone()
+    return date[0]
