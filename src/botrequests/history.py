@@ -1,6 +1,7 @@
 import sqlite3
 import datetime
 from typing import List
+import re
 
 connect = sqlite3.connect('database.db', check_same_thread=False)
 cursor = connect.cursor()
@@ -164,8 +165,12 @@ def set_price(prices: List[str], id_user):
     :param id_user:
     :param prices: 0 индекс - нижняя цена, 1 - верхняя
     """
+    if len(prices) > 2:
+        raise ValueError
+    lower_price = int(float(re.sub(',', '.', prices[0])))
+    top_price = int(float(re.sub(',', '.', prices[1])))
     sql = "UPDATE users SET lower_price=?, top_price=? WHERE id_user=?"
-    cursor.execute(sql, (prices[0], prices[1], id_user))
+    cursor.execute(sql, (lower_price, top_price, id_user))
     connect.commit()
 
 
@@ -175,8 +180,12 @@ def set_distance(distances: List[str], id_user):
     :param distances: 0 - нижняя граница, 1 - верхняя
     :param id_user:
     """
+    if len(distances) > 2:
+        raise ValueError
+    lower_distance: float = float(re.sub(',', '.', distances[0]))
+    top_distance: float = float(re.sub(',', '.', distances[1]))
     sql = "UPDATE users SET lower_dist=?, top_dist=? WHERE id_user=?"
-    cursor.execute(sql, (distances[0], distances[1], id_user))
+    cursor.execute(sql, (lower_distance, top_distance, id_user))
     connect.commit()
 
 
@@ -198,3 +207,23 @@ def get_distance(id_user):
     cursor.execute("SELECT lower_dist, top_dist FROM users WHERE id_user=?", (id_user,))
     distances = cursor.fetchone()
     return distances
+
+
+def get_time(id_user):
+    """
+    По id пользователя время последнего запроса
+    :return: str команда
+    """
+    cursor.execute("SELECT date_create FROM users WHERE id_user=?", (id_user,))
+    time = cursor.fetchone()
+    return time
+
+
+def get_city_user(id_user):
+    """
+    По id пользователя город последнего запроса
+    :return: str команда
+    """
+    cursor.execute("SELECT city FROM users WHERE id_user=?", (id_user,))
+    city = cursor.fetchone()
+    return city

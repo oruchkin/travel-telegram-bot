@@ -57,16 +57,14 @@ def get_city_id(city):
     return city_id
 
 
-def get_properties_list(id_user) -> List[dict]:
+def get_properties_list(id_user, page_number) -> List[dict]:
     """
     Парсим API для по городу, границам цен.
     В зависимости от верхней границы расстаяния от центра парсим с разными характеристиками сортировки (если очень
     близко к центру - сортируем по расстоянию от центра (пользователю важнее приближенность к центру чем деньги),
     если далеко от центра (пользователю важнее сэкономить) - сортируем по цене)
-    :param upp_board: верхняя граница расстояния от центра
-    :param price_max: максимальная цена
-    :param price_min: минимальная цена
-    :param city: город
+    :param page_number: номер страницы вывода списка отелей
+    :param id_user:
     :return: лист отелей
     """
     url = "https://hotels4.p.rapidapi.com/properties/list"
@@ -76,7 +74,7 @@ def get_properties_list(id_user) -> List[dict]:
     check_in = str(today + timedelta(days=2))
     check_out = str(today + timedelta(days=3))
     if float(distances[1]) <= 2.5:
-        querystring = {"destinationId": history.get_id_city_user(id_user), "pageNumber": "1", "pageSize": "25", "checkIn": check_in,
+        querystring = {"destinationId": history.get_id_city_user(id_user), "pageNumber": str(page_number), "pageSize": "25", "checkIn": check_in,
                        "checkOut": check_out, "adults1": "1", "priceMin": prices[0], "priceMax": prices[1],
                        "sortOrder": "DISTANCE_FROM_LANDMARK", "locale": "ru_RU", "currency": "RUB"}
     else:
@@ -111,7 +109,6 @@ def get_photo(id_hotel: str, number: str) -> json:
 def string_to_number(string: str) -> [int, float]:
     """
     Вытаскивает из строки число, меняет запятую на точку
-
     :param string: строка состоящая из цифр и букв
     """
     number = ''
@@ -127,25 +124,25 @@ def string_to_number(string: str) -> [int, float]:
     return int(number)
 
 
-def get_hotels_info(id_user) -> List[dict]:
+def get_hotels_info(id_user, count: int = 0, page_number: int = 1, top=None) -> List[dict]:
     """
     Сортируем список по цене (сначала дешевые)
     Потом в цикле проверяем каждый отель на соответствие запрошенного расстояния от центра города.
     Далее берем необходимые значения из list_hotels, потом присваиваем их новому словарю. На каждой итерации
     цикла мы добавляем созданный словарь в список top
-    :param list_hotels: лист отелей
-    :param number: кол-во отелей
-    :param lower_bond: нижняя граница по расстоянию
-    :param upp_board: верхняя граница по расстоянию
+    :param top:
+    :param page_number: номер страницы вывода списка отелей(для функции get_properties_list)
+    :param id_user:
+    :param count: кол-во отелей, которые соответствуют условиям
     :return: список словарей отелей с необходимыми характеристиками
     """
 
-    sorted_list_hotels = sorted(get_properties_list(id_user), key=lambda x: int(x['ratePlan']['price']['exactCurrent']))
-    count = 0
-    top = []
+    if top is None:
+        top = []
+    sorted_list_hotels = sorted(get_properties_list(id_user, page_number), key=lambda x: int(x['ratePlan']['price']['exactCurrent']))
     distances = history.get_distance(id_user)
     for hotel in sorted_list_hotels:
-        if string_to_number(distances[0]) <= string_to_number(hotel['landmarks'][0]['distance']) <= string_to_number(distances[1]):
+        if float(distances[0]) <= string_to_number(hotel['landmarks'][0]['distance']) <= float(distances[1]):
             hotel_info = dict()
             count += 1
             name = hotel['name']
@@ -165,8 +162,20 @@ def get_hotels_info(id_user) -> List[dict]:
             if history.get_count_of_photo(id_user):
                 hotel_info['photo']: List[str] = get_photo(hotel['id'], history.get_count_of_photo(id_user))
             top.append(hotel_info)
+            # print('==========')
+            # print(booking)
+            # print(name)
+            # print('==========')
+            # print('найдено отелей:', count)
             if count == history.get_count_of_hotels(id_user):
                 break
+
+    if page_number == 1:
+        return top
+    if count < history.get_count_of_hotels(id_user):
+        page_number += 1
+        get_hotels_info(id_user, count, page_number, top)
+
     return top
 
 

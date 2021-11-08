@@ -63,7 +63,7 @@ def send_high_price_hotels(message):
     """
     Выдаем результат последнего запроса (история)
     """
-    pass
+    show_result(message.chat.id)
 
 def check_city(message: types.Message):
     """
@@ -208,13 +208,27 @@ def ask_number_photo(message: types.Message):
         keyboard.row('4', '5', '6')
         keyboard.row('7', '8', '9')
         number_photo: types.Message = bot.reply_to(message, 'Сколько?', reply_markup=keyboard)
-        bot.register_next_step_handler(number_photo, show_result)
+        bot.register_next_step_handler(number_photo, check_count_of_photo)
     else:
         photo_desire: types.Message = bot.reply_to(message, 'Введите "да" или "нет"')
         bot.register_next_step_handler(photo_desire, ask_number_photo)
 
 
-def show_result(message: types.Message):
+def check_count_of_photo(message: types.Message):
+    count_of_photo = message.text
+
+    if (count_of_photo.isdigit() and history.get_photo(message.chat.id)) or \
+            (count_of_photo == 'нет' and not history.get_photo(message.chat.id)):
+        if count_of_photo.isdigit() and int(count_of_photo) > 9:
+            count_of_photo = 9
+        history.set_count_of_photo(message.chat.id, count_of_photo)
+        show_result(message.chat.id)
+    else:
+        number_photo: types.Message = bot.reply_to(message, 'Введите число!')
+        bot.register_next_step_handler(number_photo, check_count_of_photo)
+
+
+def show_result(id_user):
     """
     Если нужны фотографии и пользователь ввел число на вопрос "сколько?" - то выводим результат, если он ввел не число
     то ему придет еще один запрос на кол-во фотографий, пока он не введет число.
@@ -222,43 +236,32 @@ def show_result(message: types.Message):
 
     :param message: если фотографии нужны тот тут кол-во фоторгафий, если они не нужны тот тут "нет"
     """
-    count_of_photo = message.text
+    bot.send_message(id_user, 'Обзваниваю отели. Подождите, пожалуйста',
+                     reply_markup=types.ReplyKeyboardRemove())
 
-    if (count_of_photo.isdigit() and history.get_photo(message.chat.id)) or \
-            (count_of_photo == 'нет' and not history.get_photo(message.chat.id)):
-
-        if count_of_photo.isdigit() and int(count_of_photo) > 9:
-            count_of_photo = 9
-        history.set_count_of_photo(message.chat.id, count_of_photo)
-        bot.send_message(message.chat.id, 'Обзваниваю отели. Подождите, пожалуйста',
-                         reply_markup=types.ReplyKeyboardRemove())
-
-        if history.get_command(message.chat.id) == 'lowprice':
-            hotels: List[dict] = lowprice.get_hotels_info(message.chat.id)
-        elif history.get_command(message.chat.id) == 'highprice':
-            hotels: List[dict] = highprice.get_hotels_info(message.chat.id)
-        else:
-            hotels: List[dict] = bestdeal.get_hotels_info(message.chat.id)
-        for i in range(history.get_count_of_hotels(message.chat.id)):
-
-            if history.get_count_of_photo(message.chat.id):
-                bot.send_media_group(message.chat.id, hotels[i]['photo'])
-
-            link_booking = types.InlineKeyboardMarkup()
-            button = types.InlineKeyboardButton(text='Забронировать номер', url=hotels[i]['booking'])
-            link_booking.add(button)
-
-            bot.send_message(message.from_user.id, 'Название отеля: {name}\n'
-                                                   'Адрес: {address}\n'
-                                                   'Расстояние до центра: {dist}\n'
-                                                   'Цена: {price}'.format(name=hotels[i]['name'],
-                                                                          address=hotels[i]['addres'],
-                                                                          dist=hotels[i]['distance_to_center'],
-                                                                          price=hotels[i]['price']),
-                             reply_markup=link_booking)
+    if history.get_command(id_user) == 'lowprice':
+        hotels: List[dict] = lowprice.get_hotels_info(id_user)
+    elif history.get_command(id_user) == 'highprice':
+        hotels: List[dict] = highprice.get_hotels_info(id_user)
     else:
-        number_photo: types.Message = bot.reply_to(message, 'Введите число!')
-        bot.register_next_step_handler(number_photo, show_result)
+        hotels: List[dict] = bestdeal.get_hotels_info(id_user)
+    for i in range(history.get_count_of_hotels(id_user)):
+
+        if history.get_count_of_photo(id_user):
+            bot.send_media_group(id_user, hotels[i]['photo'])
+
+        link_booking = types.InlineKeyboardMarkup()
+        button = types.InlineKeyboardButton(text='Забронировать номер', url=hotels[i]['booking'])
+        link_booking.add(button)
+
+        bot.send_message(id_user, 'Название отеля: {name}\n'
+                                               'Адрес: {address}\n'
+                                               'Расстояние до центра: {dist}\n'
+                                               'Цена: {price}'.format(name=hotels[i]['name'],
+                                                                      address=hotels[i]['addres'],
+                                                                      dist=hotels[i]['distance_to_center'],
+                                                                      price=hotels[i]['price']),
+                         reply_markup=link_booking)
 
 
 bot.infinity_polling()
