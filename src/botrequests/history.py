@@ -27,17 +27,11 @@ def create_user(id_user, command):
     :param id_user: id пользователя
     :param command: комманда введенная пользователем
     """
-    cursor.execute("SELECT id_user FROM users WHERE id_user=?", (id_user,))
     datetime_now = datetime.datetime.now()
-    date = datetime_now.strftime('%H:%M - %d.%m.%Y')
-    if not cursor.fetchone():
-        sql = "INSERT INTO users(id_user, command, date_create) VALUES(?, ?, ?)"
-        cursor.execute(sql, (id_user, command, date))
-        connect.commit()
-    else:
-        sql = "UPDATE users SET command = ?, date_create = ? WHERE id_user = ?"
-        cursor.execute(sql, (command, datetime_now, id_user))
-        connect.commit()
+    date = datetime_now.strftime('%H:%M:%S - %d.%m.%Y')
+    sql = "INSERT INTO users(id_user, command, date_create) VALUES(?, ?, ?)"
+    cursor.execute(sql, (id_user, command, date))
+    connect.commit()
 
 
 def get_command(id_user):
