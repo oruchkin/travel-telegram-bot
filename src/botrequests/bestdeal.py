@@ -170,7 +170,7 @@ def get_hotels_info(id_user, count: int = 0, page_number: int = 1, top=None) -> 
             if count == history.get_count_of_hotels(id_user):
                 break
 
-    if page_number == 1:
+    if page_number == 3:
         return top
     if count < history.get_count_of_hotels(id_user):
         page_number += 1
