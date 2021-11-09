@@ -2,6 +2,7 @@ import sqlite3
 import datetime
 from typing import List
 import re
+from telebot import types
 
 connect = sqlite3.connect('database.db', check_same_thread=False)
 cursor = connect.cursor()
@@ -17,7 +18,8 @@ cursor.execute("CREATE TABLE IF NOT EXISTS users("
                "top_price TEXT,"
                "lower_price TEXT,"
                "top_dist TEXT,"
-               "lower_dist TEXT)")
+               "lower_dist TEXT,"
+               "hotels TEXT)")
 cursor.execute("CREATE TABLE IF NOT EXISTS cities(id_city TEXT, city TEXT)")
 
 
@@ -32,7 +34,6 @@ def create_user(id_user, command):
     sql = "INSERT INTO users(id_user, command, date_create) VALUES(?, ?, ?)"
     cursor.execute(sql, (id_user, command, date))
     connect.commit()
-    print(type(date))
     return date
 
 
@@ -206,31 +207,70 @@ def get_distance(id_user, date_create):
     return distances
 
 
-def get_time(id_user):
+#
+# def get_time(id_user):
+#     """
+#     По id пользователя время последнего запроса
+#     :return: str команда
+#     """
+#     cursor.execute("SELECT date_create FROM users WHERE id_user=?", (id_user,))
+#     time = cursor.fetchone()
+#     return time
+
+
+# def get_city_user(id_user):
+#     """
+#     По id пользователя город последнего запроса
+#     :return: str команда
+#     """
+#     cursor.execute("SELECT city FROM users WHERE id_user=?", (id_user,))
+#     city = cursor.fetchone()
+#     return city
+#
+#
+# def get_date(id_user):
+#     """
+#     По id пользователя время последнего запроса
+#     :return: str команда
+#     """
+#     cursor.execute("SELECT date_create FROM users WHERE id_user=?", (id_user,))
+#     date = cursor.fetchone()
+#     return date[0]
+
+
+def set_hotels(id_user: int, hotels: List[dict], date_create):
     """
-    По id пользователя время последнего запроса
+    Записываем в БД нужны ли пользователю фотографии
+    :param hotels:
+    :param id_user: id пользователя
+    """
+    hotels = str(hotels)
+    sql = "UPDATE users SET hotels=? WHERE id_user=? and date_create=?"
+    cursor.execute(sql, (hotels, id_user, date_create))
+    connect.commit()
+
+
+def get_hotels(id_user, date_create):
+    """
+    По id пользователя id города
     :return: str команда
     """
-    cursor.execute("SELECT date_create FROM users WHERE id_user=?", (id_user,))
-    time = cursor.fetchone()
-    return time
+    cursor.execute("SELECT hotels FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
+    hotels = cursor.fetchone()
+    hotels = eval(hotels[0])
+    return hotels
 
 
-def get_city_user(id_user):
-    """
-    По id пользователя город последнего запроса
-    :return: str команда
-    """
-    cursor.execute("SELECT city FROM users WHERE id_user=?", (id_user,))
-    city = cursor.fetchone()
-    return city
+def create_media_group(photos: List[str]) -> List[types.InputMediaPhoto]:
+    media_group = []
+    for photo in photos:
+        media_group.append(types.InputMediaPhoto(photo))
+    return media_group
 
 
-def get_date(id_user):
-    """
-    По id пользователя время последнего запроса
-    :return: str команда
-    """
-    cursor.execute("SELECT date_create FROM users WHERE id_user=?", (id_user,))
-    date = cursor.fetchone()
-    return date[0]
+def send_history(id_user):
+    sql = "SELECT command, date_create, hotels FROM users WHERE user_id=?"
+    cursor.execute(sql, (id_user, ))
+    history = cursor.fetchall()
+    for i in history:
+        print(i)

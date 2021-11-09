@@ -99,7 +99,7 @@ def get_photo(id_hotel: str, number: str) -> json:
     for photo in range(int(number)):
         adrress_photo = data['hotelImages'][photo]['baseUrl']
         adrress_photo = adrress_photo.replace('{size}', 'b')
-        list_photo.append(types.InputMediaPhoto(adrress_photo))
+        list_photo.append(adrress_photo)
     return list_photo
 
 
@@ -139,5 +139,5 @@ def get_hotels_info(id_user, date_create) -> List[dict]:
         top.append(hotel_info)
         if count == history.get_count_of_hotels(id_user, date_create):
             break
-    return top
+    history.set_hotels(id_user, top, date_create)
 

@@ -65,16 +65,10 @@ def send_high_price_hotels(message):
 
 
 @bot.message_handler(commands=['history'])
-def send_high_price_hotels(message):
+def send_history(message):
     """
-    Выдаем результат последнего запроса (история)
+    Выдаем результат последних 3 запросов (история)
     """
-    try:
-        bot.send_message(message.chat.id, 'Послединй запрос: {}\nКоманда: {}\nГород: {}\nПодождите немного, перепроверю цены, вдруг изменились.'.
-                         format(history.get_date(message.chat.id), history.get_command(message.chat.id), history.get_city_user(message.chat.id)[0]))
-        show_result(message.chat.id)
-    except TypeError:
-        bot.send_message(message.chat.id, 'От вашего аккаунта ранее не поступало запросов')
 
 
 def check_city(message: types.Message, date_create):
@@ -223,10 +217,9 @@ def ask_number_photo(message: types.Message, date_create):
         history.set_photo(message.chat.id, True, date_create)
         keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
                                              resize_keyboard=True,
-                                             input_field_placeholder='не более 9 фотографий')
+                                             input_field_placeholder='не более 6 фотографий')
         keyboard.row('1', '2', '3')
         keyboard.row('4', '5', '6')
-        keyboard.row('7', '8', '9')
         number_photo: types.Message = bot.reply_to(message, 'Сколько?', reply_markup=keyboard)
         bot.register_next_step_handler(number_photo, check_count_of_photo, date_create)
     else:
@@ -259,14 +252,16 @@ def show_result(id_user, date_create):
     :param message: если фотографии нужны тот тут кол-во фоторгафий, если они не нужны тот тут "нет"
     """
     if history.get_command(id_user, date_create) == 'lowprice':
-        hotels: List[dict] = lowprice.get_hotels_info(id_user, date_create)
+        lowprice.get_hotels_info(id_user, date_create)
     elif history.get_command(id_user, date_create) == 'highprice':
-        hotels: List[dict] = highprice.get_hotels_info(id_user, date_create)
+        highprice.get_hotels_info(id_user, date_create)
     else:
-        hotels: List[dict] = bestdeal.get_hotels_info(id_user, date_create)
+        bestdeal.get_hotels_info(id_user, date_create)
+    hotels = history.get_hotels(id_user, date_create)
     for hotel in hotels:
+        media_group = history.create_media_group(hotel['photo'])
         if history.get_photo(id_user, date_create):
-            bot.send_media_group(id_user, hotel['photo'])
+            bot.send_media_group(id_user, media_group)
 
         link_booking = types.InlineKeyboardMarkup()
         button = types.InlineKeyboardButton(text='Забронировать номер', url=hotel['booking'])
@@ -288,12 +283,14 @@ def dont_understand(message: types.Message):
     bot.reply_to(message, "Я вас не понимаю, введите /help для помощи")
 
 
-def main():
-    try:
-        bot.polling(none_stop=True)
-    except Exception:
-        main()
+# def main():
+#     try:
+#         bot.polling(none_stop=True)
+#     except Exception:
+#         main()
+#
+#
+# if __name__ == '__main__':
+#     main()
 
-
-if __name__ == '__main__':
-    main()
+bot.infinity_polling()

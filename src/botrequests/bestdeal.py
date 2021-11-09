@@ -103,7 +103,7 @@ def get_photo(id_hotel: str, number: str) -> json:
     for photo in range(int(number)):
         adrress_photo = data['hotelImages'][photo]['baseUrl']
         adrress_photo = adrress_photo.replace('{size}', 'b')
-        list_photo.append(types.InputMediaPhoto(adrress_photo))
+        list_photo.append(adrress_photo)
     return list_photo
 
 
@@ -167,13 +167,13 @@ def get_hotels_info(id_user, date_create, count: int = 0, page_number: int = 1, 
                 break
 
     if page_number == configs.page_number:
-        return top
+        history.set_hotels(id_user, top, date_create)
 
     if count < history.get_count_of_hotels(id_user, date_create):
         page_number += 1
         get_hotels_info(id_user, count, page_number, top)
 
-    return top
+    history.set_hotels(id_user, top, date_create)
 
 
 
