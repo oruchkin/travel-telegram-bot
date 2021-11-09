@@ -3,6 +3,7 @@ import datetime
 from typing import List
 import re
 from telebot import types
+from src import configs
 
 connect = sqlite3.connect('database.db', check_same_thread=False)
 cursor = connect.cursor()
@@ -269,8 +270,25 @@ def create_media_group(photos: List[str]) -> List[types.InputMediaPhoto]:
 
 
 def send_history(id_user):
-    sql = "SELECT command, date_create, hotels FROM users WHERE user_id=?"
+    sql = "SELECT command, date_create, hotels, city FROM users WHERE id_user=?"
     cursor.execute(sql, (id_user, ))
     history = cursor.fetchall()
-    for i in history:
-        print(i)
+
+    if len(history) == 0:
+        return False
+    history = history[-configs.number_stories:]
+    text_for_send = []
+    for story in history:
+        command = 'Команда: {}'.format(story[0])
+        date_create = 'Время: {}'.format(story[1])
+        city = 'Город: {}'.format(story[3])
+        text = [command, '\n', date_create, '\n', city, '\n']
+        try:
+            for hotel in eval(story[2]):
+                name_hotel = ''.join([hotel['name'], '\n'])
+                text.append(name_hotel)
+        except TypeError:
+            text.append('Отелей не найдено')
+        text.append(story[1])
+        text_for_send.append(text)
+    return text_for_send

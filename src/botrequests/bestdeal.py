@@ -125,7 +125,7 @@ def string_to_number(string: str) -> [int, float]:
     return int(number)
 
 
-def get_hotels_info(id_user, date_create, count: int = 0, page_number: int = 1, top=None) -> List[dict]:
+def get_hotels_info(id_user, date_create, count: int = 0, page_number: int = 1, top=None):
     """
     Сортируем список по цене (сначала дешевые)
     Потом в цикле проверяем каждый отель на соответствие запрошенного расстояния от центра города.
@@ -171,7 +171,7 @@ def get_hotels_info(id_user, date_create, count: int = 0, page_number: int = 1, 
 
     if count < history.get_count_of_hotels(id_user, date_create):
         page_number += 1
-        get_hotels_info(id_user, count, page_number, top)
+        get_hotels_info(id_user, date_create, count, page_number, top)
 
     history.set_hotels(id_user, top, date_create)
 

@@ -1,5 +1,4 @@
 import telebot
-from telebot import ExceptionHandler
 from decouple import config
 from src.botrequests import lowprice
 from src.botrequests import highprice
@@ -67,8 +66,19 @@ def send_high_price_hotels(message):
 @bot.message_handler(commands=['history'])
 def send_history(message):
     """
-    Выдаем результат последних 3 запросов (история)
+    Выдаем результат последних number_stories запросов (история)
     """
+    hist = history.send_history(message.chat.id)
+    if hist:
+        bot.send_message(message.chat.id, 'Последние запросы : '.format(len(hist)))
+        for story in hist:
+            restart_button = types.InlineKeyboardMarkup()
+            data = ''.join([story[-1], 'history'])
+            button = types.InlineKeyboardButton(text='Повторить запрос', callback_data=data)
+            restart_button.add(button)
+            bot.send_message(message.chat.id, ''.join(story[:-1]), reply_markup=restart_button)
+    else:
+        bot.send_message(message.chat.id, 'История пуста.')
 
 
 def check_city(message: types.Message, date_create):
@@ -78,7 +88,6 @@ def check_city(message: types.Message, date_create):
     В callback передаваемые данных передаем id города, который выбрал пользователь
     :param message: запрошенный город
     """
-
     cities_button = types.InlineKeyboardMarkup()
     city = message.text
     cities = lowprice.check_city(city)
@@ -94,20 +103,26 @@ def check_city(message: types.Message, date_create):
 def answer(call):
     """
     Ловим нажатие пользователя на кнопку!
+    Если данные с кнопки заканчиваются на history, значит пользователь запрашивает повторный вывод из истории,
+    следовательно отправляем его в функцию вывода результата. из callback данных убираем последнием 7 символов (history)
+    и получаем время создания строки в таблице БД.
     Тут мы записываем окончательный выбор города в БД (id и имя) и переходим к функции кол-ва отелей
     В завимимости от команды пользователя отправляем в следующую функцию
     :return:
     """
-    data = call.data.split('|')
-    date_create = data[1]
-    id_city = data[0]
-    city = history.get_city(data[0])
-    history.set_city_user(id_city, city, call.message.chat.id, date_create)
-    bot.send_message(call.message.chat.id, 'Ты выбрал:\n{}'.format(city))
-    if history.get_command(call.message.chat.id, date_create) == 'bestdeal':
-        ask_price(call.message.chat.id, date_create)
+    if call.data.endswith('history'):
+        show_result(call.message.chat.id, call.data[:-7])
     else:
-        ask_number_hotels(call.message.chat.id, date_create)
+        data = call.data.split('|')
+        date_create = data[1]
+        id_city = data[0]
+        city = history.get_city(data[0])
+        history.set_city_user(id_city, city, call.message.chat.id, date_create)
+        bot.send_message(call.message.chat.id, 'Ты выбрал:\n{}'.format(city))
+        if history.get_command(call.message.chat.id, date_create) == 'bestdeal':
+            ask_price(call.message.chat.id, date_create)
+        else:
+            ask_number_hotels(call.message.chat.id, date_create)
 
 
 def ask_price(id_user, date_create):
@@ -259,8 +274,8 @@ def show_result(id_user, date_create):
         bestdeal.get_hotels_info(id_user, date_create)
     hotels = history.get_hotels(id_user, date_create)
     for hotel in hotels:
-        media_group = history.create_media_group(hotel['photo'])
         if history.get_photo(id_user, date_create):
+            media_group = history.create_media_group(hotel['photo'])
             bot.send_media_group(id_user, media_group)
 
         link_booking = types.InlineKeyboardMarkup()
