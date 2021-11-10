@@ -24,31 +24,34 @@ cursor.execute("CREATE TABLE IF NOT EXISTS users("
 cursor.execute("CREATE TABLE IF NOT EXISTS cities(id_city TEXT, city TEXT)")
 
 
-def create_user(id_user, command):
+def create_user(id_user: int, command: str) -> str:
     """
-    Создаем запись в БД. Если такой пользователь уже есть в БД, то обновляем command и записываем текущую дату и время
+    Создаем запись в БД.
     :param id_user: id пользователя
     :param command: комманда введенная пользователем
     """
-    datetime_now = datetime.datetime.now()
-    date = datetime_now.strftime('%H:%M:%S - %d.%m.%Y')
-    sql = "INSERT INTO users(id_user, command, date_create) VALUES(?, ?, ?)"
+    datetime_now: datetime.datetime = datetime.datetime.now()
+    date: str = datetime_now.strftime('%H:%M:%S - %d.%m.%Y')
+    sql: str = "INSERT INTO users(id_user, command, date_create) VALUES(?, ?, ?)"
+
     cursor.execute(sql, (id_user, command, date))
     connect.commit()
+
     return date
 
 
-def get_command(id_user, date_create):
+def get_command(id_user: int, date_create: str) -> str:
     """
-    По id пользователя возвращаем его команду
+    Возвращаем из БД команду пользователя
     :return: str команда
     """
     cursor.execute("SELECT command FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
-    command = cursor.fetchone()
+    command: tuple[str] = cursor.fetchone()
+
     return command[0]
 
 
-def create_city(city, id_city):
+def create_city(city: str, id_city: str) -> None:
     """
     Создаем запись в таблице cities. Если такой город уже есть в БД, то ничего не делаем
     :param city: название города
@@ -56,239 +59,249 @@ def create_city(city, id_city):
     """
     cursor.execute("SELECT id_city FROM cities WHERE id_city=?", (id_city,))
     if not cursor.fetchone():
-        sql = "INSERT INTO cities(id_city, city) VALUES(?, ?)"
+        sql: str = "INSERT INTO cities(id_city, city) VALUES(?, ?)"
         cursor.execute(sql, (id_city, city))
         connect.commit()
 
 
-def get_city(id_city):
+def get_city(id_city: str) -> str:
     """
     По id Города возвращаем из базы его полное название
-    :return: str название города
+    :return: название города
     """
     cursor.execute("SELECT city FROM cities WHERE id_city=?", (id_city,))
-    city = cursor.fetchone()
+    city: tuple[str] = cursor.fetchone()
+
     return city[0]
 
 
-def set_count_of_hotels(id_user, count_of_hotels, date_create):
+def set_count_of_hotels(id_user: int, count_of_hotels: int, date_create: str) -> None:
     """
     Записываем в БД кол-во отелей пользователя
-    :param count_of_hotels: кол-во отелей
-    :param id_user: id пользователя
     """
-    sql = "UPDATE users SET count_of_hotels=? WHERE id_user=? and date_create=?"
+    sql: str = "UPDATE users SET count_of_hotels=? WHERE id_user=? and date_create=?"
     cursor.execute(sql, (count_of_hotels, id_user, date_create))
     connect.commit()
 
 
-def set_photo(id_user: int, photo: bool, date_create):
+def set_photo(id_user: int, photo: bool, date_create: str) -> None:
     """
     Записываем в БД нужны ли пользователю фотографии
-    :param photo:
-    :param id_user: id пользователя
     """
-    sql = "UPDATE users SET photo=? WHERE id_user=? and date_create=?"
+    sql: str = "UPDATE users SET photo=? WHERE id_user=? and date_create=?"
     cursor.execute(sql, (photo, id_user, date_create))
     connect.commit()
 
 
-def set_count_of_photo(id_user: int, count_of_photo: [int, str], date_create):
+def set_count_of_photo(id_user: int, count_of_photo: [int, str], date_create: str) -> None:
     """
     Записываем в БД сколько фотографий нужно пользователю
-    :param count_of_photo: кол-во фотографий
-    :param id_user: id пользователя
     """
     if count_of_photo == 'нет':
         count_of_photo = 0
-    sql = "UPDATE users SET count_of_photo=? WHERE id_user=? and date_create=?"
+    sql: str = "UPDATE users SET count_of_photo=? WHERE id_user=? and date_create=?"
     cursor.execute(sql, (count_of_photo, id_user, date_create))
     connect.commit()
 
 
-def set_city_user(id_city: int, city: str, id_user: int, date_create: str):
+def set_city_user(id_city: str, city: str, id_user: int, date_create: str) -> None:
     """
     Записываем в таблицу users город и id города
-    :param city:
-    :param id_city:
-    :param id_user: id пользователя
     """
-    sql = "UPDATE users SET id_city=?, city=? WHERE id_user=? and date_create=?"
+    sql: str = "UPDATE users SET id_city=?, city=? WHERE id_user=? and date_create=?"
     cursor.execute(sql, (id_city, city, id_user, date_create))
     connect.commit()
 
 
-def get_count_of_photo(id_user, date_create):
+def get_count_of_photo(id_user: int, date_create: str) -> int:
     """
     По id пользователя кол-во фотографий
     :return: str команда
     """
     cursor.execute("SELECT count_of_photo FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
-    count_of_photo = cursor.fetchone()
+    count_of_photo: tuple[int] = cursor.fetchone()
+
     return count_of_photo[0]
 
 
-def get_count_of_hotels(id_user, date_create):
+def get_count_of_hotels(id_user: int, date_create: str) -> int:
     """
     По id пользователя кол-во отелей
     :return: str команда
     """
     cursor.execute("SELECT count_of_hotels FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
-    count_of_hotels = cursor.fetchone()
+    count_of_hotels: tuple[int] = cursor.fetchone()
+
     return count_of_hotels[0]
 
 
-def get_id_city_user(id_user, date_create):
+def get_id_city_user(id_user: int, date_create: str) -> int:
     """
     По id пользователя id города
     :return: str команда
     """
     cursor.execute("SELECT id_city FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
-    id_city = cursor.fetchone()
+    id_city: tuple[int] = cursor.fetchone()
+
     return id_city[0]
 
 
-def get_photo(id_user, date_create):
+def get_photo(id_user: int, date_create: str) -> bool:
     """
-    По id пользователя id города
+    По id пользователя нужно фото или нет
     :return: str команда
     """
     cursor.execute("SELECT photo FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
-    photo = cursor.fetchone()
+    photo: tuple[bool] = cursor.fetchone()
+
     return photo[0]
 
 
-def set_price(prices: List[str], id_user, date_create):
+def set_price(prices: List[str], id_user: int, date_create: str) -> None:
     """
-    Записываем в БД нижнюю и верхнюю цены.
-    :param id_user:
-    :param prices: 0 индекс - нижняя цена, 1 - верхняя
+    Записываем в БД нижнюю и верхнюю цены. Если пользователь ввел не 2 числа - выдаем исключение
+    Если пользователь - камень, поменяем местами цены
+
+    :param date_create: Дата ввода команды
+    :param prices: цены в списке, 0 - нижняя, 1 - верхняя
+    :param id_user: id пользователя
     """
     if len(prices) > 2:
         raise ValueError
-    lower_price = int(float(re.sub(',', '.', prices[0])))
-    top_price = int(float(re.sub(',', '.', prices[1])))
+
+    lower_price = abs(int(float(re.sub(',', '.', prices[0]))))
+    top_price = abs(int(float(re.sub(',', '.', prices[1]))))
+
+    if lower_price > top_price:
+        lower_price, top_price = top_price, lower_price
+
     sql = "UPDATE users SET lower_price=?, top_price=? WHERE id_user=? and date_create=?"
     cursor.execute(sql, (lower_price, top_price, id_user, date_create))
     connect.commit()
 
 
-def set_distance(distances: List[str], id_user, date_create):
+def set_distance(distances: List[str], id_user: int, date_create: str) -> None:
     """
-    Записываем в БД нижнюю и верхнюю цены.
-    :param distances: 0 - нижняя граница, 1 - верхняя
-    :param id_user:
+    Записываем в БД нижнюю и верхнюю цены. Если пользователь ввел не 2 числа - выдаем исключение
+    Если пользователь - камень, поменяем местами расстояния
+    :param date_create: Дата ввода команды
+    :param id_user: id пользователя
+    :param distances: расстояния в списке, 0 - нижнее, 1 - верхнее
     """
     if len(distances) > 2:
         raise ValueError
-    lower_distance: float = float(re.sub(',', '.', distances[0]))
-    top_distance: float = float(re.sub(',', '.', distances[1]))
-    sql = "UPDATE users SET lower_dist=?, top_dist=? WHERE id_user=? and date_create=?"
+
+    lower_distance: float = abs(float(re.sub(',', '.', distances[0])))
+    top_distance: float = abs(float(re.sub(',', '.', distances[1])))
+
+    if lower_distance > top_distance:
+        lower_distance, top_distance = top_distance, lower_distance
+
+    sql: str = "UPDATE users SET lower_dist=?, top_dist=? WHERE id_user=? and date_create=?"
     cursor.execute(sql, (lower_distance, top_distance, id_user, date_create))
     connect.commit()
 
 
-def get_price(id_user, date_create):
+def get_price(id_user: int, date_create: str) -> tuple[int]:
     """
     По id пользователя возвращаем кортеж из границ цен
-    :return: str команда
     """
     cursor.execute("SELECT lower_price, top_price FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
-    prices = cursor.fetchone()
+    prices: tuple[int] = cursor.fetchone()
+
     return prices
 
 
-def get_distance(id_user, date_create):
+def get_distance(id_user: int, date_create: str) -> tuple[int]:
     """
     По id пользователя возвращаем кортеж из границ дистанции от центра
-    :return: str команда
     """
     cursor.execute("SELECT lower_dist, top_dist FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
-    distances = cursor.fetchone()
+    distances: tuple[int] = cursor.fetchone()
+
     return distances
 
 
-#
-# def get_time(id_user):
-#     """
-#     По id пользователя время последнего запроса
-#     :return: str команда
-#     """
-#     cursor.execute("SELECT date_create FROM users WHERE id_user=?", (id_user,))
-#     time = cursor.fetchone()
-#     return time
-
-
-# def get_city_user(id_user):
-#     """
-#     По id пользователя город последнего запроса
-#     :return: str команда
-#     """
-#     cursor.execute("SELECT city FROM users WHERE id_user=?", (id_user,))
-#     city = cursor.fetchone()
-#     return city
-#
-#
-# def get_date(id_user):
-#     """
-#     По id пользователя время последнего запроса
-#     :return: str команда
-#     """
-#     cursor.execute("SELECT date_create FROM users WHERE id_user=?", (id_user,))
-#     date = cursor.fetchone()
-#     return date[0]
-
-
-def set_hotels(id_user: int, hotels: List[dict], date_create):
+def set_hotels(id_user: int, hotels: List[dict], date_create: str) -> None:
     """
-    Записываем в БД нужны ли пользователю фотографии
-    :param hotels:
-    :param id_user: id пользователя
+    Записываем в БД все отели которые нашли по этой команде (преобразуем список в строку, чтобы записать в БД)
     """
     hotels = str(hotels)
+
     sql = "UPDATE users SET hotels=? WHERE id_user=? and date_create=?"
     cursor.execute(sql, (hotels, id_user, date_create))
     connect.commit()
 
 
-def get_hotels(id_user, date_create):
+def get_hotels(id_user: int, date_create: str) -> List[dict]:
     """
-    По id пользователя id города
-    :return: str команда
+    По id пользователя и date_create возвращаем отели, которые были найдены
     """
     cursor.execute("SELECT hotels FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
-    hotels = cursor.fetchone()
-    hotels = eval(hotels[0])
+    hotels: tuple[str] = cursor.fetchone()
+    hotels: List = eval(hotels[0])
     return hotels
 
 
 def create_media_group(photos: List[str]) -> List[types.InputMediaPhoto]:
-    media_group = []
+    """
+    Возвращаем список объектов фотографий для бота из списка строк
+    :param photos: Список адресов с фотографиями
+    """
+    media_group: List = []
     for photo in photos:
         media_group.append(types.InputMediaPhoto(photo))
+
     return media_group
 
 
-def send_history(id_user):
-    sql = "SELECT command, date_create, hotels, city FROM users WHERE id_user=?"
+def send_history(id_user: int) -> [List, bool]:
+    """
+    Возвращаем историю пользователя. Делаем запрос необходимых данных, делаем срез только последних number_stories(файл
+    configs.py) историй. Список отелей хранится строкой, поэтому при помощи функции eval преобразуем в список только
+    отели(индекс 2), если список пустой, то вылетит исключение TypeError. В конец записи единицц запроса истории
+    добавляем голое время запроса(276 строка), чтобы можно было в будущем использовать его для повторного вывода
+    результата
+    """
+    sql: str = "SELECT command, date_create, hotels, city FROM users WHERE id_user=?"
     cursor.execute(sql, (id_user, ))
-    history = cursor.fetchall()
+    history: List[tuple] = cursor.fetchall()
 
     if len(history) == 0:
         return False
-    history = history[-configs.number_stories:]
-    text_for_send = []
+    history: List[tuple] = history[-configs.number_stories:]
+    text_for_send: List = []
     for story in history:
-        command = 'Команда: {}'.format(story[0])
-        date_create = 'Время: {}'.format(story[1])
-        city = 'Город: {}'.format(story[3])
-        text = [command, '\n', date_create, '\n', city, '\n']
+        if not story[3]:
+            continue
+        command: str = 'Команда: {}'.format(story[0])
+        date_create: str = 'Время: {}'.format(story[1])
+        city: str = 'Город: {}'.format(story[3])
+        text: List[str] = [command, '\n', date_create, '\n', city, '\n']
         try:
             for hotel in eval(story[2]):
-                name_hotel = ''.join([hotel['name'], '\n'])
+                name_hotel: str = ''.join([hotel['name'], '\n'])
                 text.append(name_hotel)
         except TypeError:
             text.append('Отелей не найдено')
         text.append(story[1])
         text_for_send.append(text)
+
     return text_for_send
+
+
+def delete_last_story(id_user: int) -> None:
+    """
+    Удаляем запись в БД, Сначала вытаскиаем все записи, потом берем последнюю в списке - она же будет последней по
+    времени. Берем время, создаем запрос на удаление и удаляем
+    """
+    sql = "SELECT date_create FROM users WHERE id_user=?"
+    cursor.execute(sql, (id_user, ))
+
+    date_tuple = cursor.fetchall()
+    date_create = date_tuple[-1][0]
+
+    sql_delete = "DELETE FROM users WHERE id_user=? and date_create=?"
+    cursor.execute(sql_delete, (id_user, date_create))
+
+    connect.commit()

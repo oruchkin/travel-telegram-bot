@@ -1,10 +1,19 @@
 import sqlite3
-import datetime
-from typing import List
-import re
+connect = sqlite3.connect('database.db', check_same_thread=False)
+cursor = connect.cursor()
 
-datetime_now = datetime.datetime.now()
-date = datetime_now.strftime('%H:%M:%S - %d.%m.%Y')
-a = 'asdfd'
-print(type(date))
-print(type(a))
+
+def delete_last_story(id_user) -> None:
+    """
+    Удаляем запись в БД
+    """
+    sql = "SELECT date_create FROM users WHERE id_user=?"
+    cursor.execute(sql, (id_user, ))
+    date_tuple = cursor.fetchall()
+    date_create = date_tuple[-1][0]
+    sql_delete = "DELETE FROM users WHERE id_user=? and date_create=?"
+    cursor.execute(sql_delete, (id_user, date_create))
+    connect.commit()
+
+
+delete_last_story(441815129)

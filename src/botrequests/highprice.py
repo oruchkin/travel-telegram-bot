@@ -1,78 +1,69 @@
-from telebot import types
 import requests
 import json
 from decouple import config
 from typing import List, Optional
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from src.botrequests import history
 import re
 
 
-RAPIDAPI_KEY = config('RAPIDAPI_KEY')
+RAPIDAPI_KEY: str = config('RAPIDAPI_KEY')
 
-headers = {
+headers: dict = {
     'x-rapidapi-host': "hotels4.p.rapidapi.com",
     'x-rapidapi-key': RAPIDAPI_KEY
 }
 
 
-def delete_span(string: str):
-    pattern_1 = r"<span class='highlighted'>"
-    pattern_2 = r"</span>"
-    repl = ''
-    res_1 = re.sub(pattern_1, repl, string)
-    res_2 = re.sub(pattern_2, repl, res_1)
+def delete_span(string: str) -> str:
+    """
+    Удаляем из строки города HTML элементы из строки
+    :param string: строка из которой нужно убрать лишнее
+    :return:
+    """
+    pattern_1: str = r"<span class='highlighted'>"
+    pattern_2: str = r"</span>"
+    repl: str = ''
+
+    res_1: str = re.sub(pattern_1, repl, string)
+    res_2: str = re.sub(pattern_2, repl, res_1)
+
     return res_2
 
 
-def check_city(city: str):
+def check_city(city: str) -> List[List[str]]:
     """
     Делаем запрос и проверяем, все результаты ([имя города, id Города]) с type: 'CITY' записываем в список list_cities
-    :param city:
-    :return: List[str]
+    :param city: Город который ввел пользователь
+    :return: List[str] Города, которые совпали в написании с тем, что запросил пользователь
     """
-    url = "https://hotels4.p.rapidapi.com/locations/v2/search"
-    querystring = {"query": city, "locale": "ru_RU", "currency": "RUB"}
+    url: str = "https://hotels4.p.rapidapi.com/locations/v2/search"
+    querystring: dict = {"query": city, "locale": "ru_RU", "currency": "RUB"}
+
     response_city_id: json = requests.request("GET", url, headers=headers, params=querystring)
     data: json = json.loads(response_city_id.text)
-    entities = data['suggestions'][0]['entities']
-    list_cities = []
+
+    entities: List[dict] = data['suggestions'][0]['entities']
+    list_cities: List = []
+
     for entity in entities:
         if entity['type'] == 'CITY':
-            full_name = delete_span(entity['caption'])
+            full_name: str = delete_span(entity['caption'])
             list_cities.append([full_name, entity['destinationId']])
+
     return list_cities
 
 
-def get_city_id(city: str) -> str:
-    """
-    Делаем запрос к API и определяем ID требуемого города
-
-    :param city: город, который запросил пользователь
-    :return: id города
-    """
-
-    url = "https://hotels4.p.rapidapi.com/locations/search"
-    querystring = {"query": city, "locale": "ru_RU"}
-    response_city_id: json = requests.request("GET", url, headers=headers, params=querystring)
-    data_city_id: json = json.loads(response_city_id.text)
-    city_id: str = data_city_id['suggestions'][0]['entities'][0]['destinationId']
-    return city_id
-
-
-def get_properties_list(id_city: str) -> List[dict]:
+def get_properties_list(id_city: int) -> List[dict]:
     """
     Функция возвращающая список отелей, отсортированным по цене (сначала самые дешевые)
-    Внутри querystring у нас функция get_city_id, она принимает город и возвращает ID этого города (строка из цифр)
-
-    :param city: город, в котором будем искать отели
+    :param id_city: id города
     :return:  список отелей, в котором хранится информация о каждом отеле
     """
-    today = date.today()
-    check_in = str(today + timedelta(days=2))
-    check_out = str(today + timedelta(days=3))
-    url = "https://hotels4.p.rapidapi.com/properties/list"
-
+    today: datetime.date = date.today()
+    check_in: str = str(today + timedelta(days=2))
+    check_out: str = str(today + timedelta(days=3))
+    url: str = "https://hotels4.p.rapidapi.com/properties/list"
     querystring = {"destinationId": id_city, "pageNumber": "1", "pageSize": "25", "checkIn": check_in,
                    "checkOut": check_out, "adults1": "1", "sortOrder": "PRICE_HIGHEST_FIRST", "locale": "ru_RU",
                    "currency": "RUB"}
@@ -84,44 +75,52 @@ def get_properties_list(id_city: str) -> List[dict]:
     return full_list_hotels
 
 
-def get_photo(id_hotel: str, number: str) -> json:
+def get_photo(id_hotel: str, number: int) -> List[str]:
     """
-    Получаем адрес фотографии по ID отеля
+    Получаем адрес фотографии по ID отеля, в полученной адресе меняем строку {size} на b (размер фотографии).
+    Составляем список адресов
     :param number: количество фотографий отеля
     :param id_hotel: id Отеля
     :return: адрес фотографии
     """
-    url = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
-    querystring = {"id": id_hotel}
+    url: str = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
+    querystring: dict = {"id": id_hotel}
     response_photo: json = requests.request("GET", url, headers=headers, params=querystring)
     data: json = json.loads(response_photo.text)
-    list_photo = []
+
+    list_photo: List = []
+
     for photo in range(int(number)):
-        adrress_photo = data['hotelImages'][photo]['baseUrl']
-        adrress_photo = adrress_photo.replace('{size}', 'b')
-        list_photo.append(adrress_photo)
+        address_photo = data['hotelImages'][photo]['baseUrl']
+        address_photo = address_photo.replace('{size}', 'b')
+        list_photo.append(address_photo)
+
     return list_photo
 
 
-def get_hotels_info(id_user, date_create) -> List[dict]:
+def get_hotels_info(id_user, date_create) -> None:
     """
     Финальная функция. Создает список словарей, которые включают в себя информацию, которую будем выводить пользователю
-    по каждому отелю. Число отелей определает пользователь.
+    по каждому отелю.
     В функции get_properties_list мы берем список 25 отелей и присваиваем его list_hotels
     Сначала мы вы берем необходимые значения из list_hotels, потом присваиваем их новому словарю. На каждой итерации
-    цикла мы добавляем созданный словарь в список top
+    цикла мы добавляем созданный словарь в список top.
+    count - счетчик кол-ва добавленных отелей, как только станет равен числу от пользователя - цикл остановится, список
+    запишется в БД.
+    Если пользователь попросил фотографии, то запросим в функции get_photo
 
-    :param user:
+    :param id_user:
+    :param date_create:
     :return:  список из number словарей, в каждом словаре информация по одному отелю
     """
-    count = 0
-    top = []
-    list_hotels = get_properties_list(history.get_id_city_user(id_user, date_create))
+    count: int = 0
+    top: List = []
+    list_hotels: List[dict] = get_properties_list(history.get_id_city_user(id_user, date_create))
     for hotel in list_hotels:
-        hotel_info = dict()
+        hotel_info: dict = dict()
         count += 1
         name: str = hotel['name']
-        id_hotel = str(hotel['id'])
+        id_hotel: str = str(hotel['id'])
         booking = ''.join(['https://ru.hotels.com/ho', id_hotel])
         try:
             address: Optional[str] = hotel['address']['streetAddress']
@@ -129,15 +128,18 @@ def get_hotels_info(id_user, date_create) -> List[dict]:
             address: Optional[str] = None
         distance_to_center: str = hotel['landmarks'][0]['distance']
         price: str = hotel['ratePlan']['price']['current']
+
         hotel_info['name']: str = name
-        hotel_info['addres']: str = address
+        hotel_info['address']: str = address
         hotel_info['distance_to_center']: str = distance_to_center
         hotel_info['price']: str = price
         hotel_info['booking']: str = booking
-        if history.get_count_of_photo(id_user, date_create):
+
+        if history.get_photo(id_user, date_create):
             hotel_info['photo']: List[str] = get_photo(hotel['id'], history.get_count_of_photo(id_user, date_create))
         top.append(hotel_info)
+
         if count == history.get_count_of_hotels(id_user, date_create):
             break
-    history.set_hotels(id_user, top, date_create)
 
+    history.set_hotels(id_user, top, date_create)
