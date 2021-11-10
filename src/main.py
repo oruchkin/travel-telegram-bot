@@ -17,6 +17,15 @@ headers: dict = {
 }
 
 
+@bot.message_handler(commands=['restart'])
+def restart(message: types.Message) -> None:
+    """
+    Сброс параметров последнего запроса
+    """
+    history.delete_last_story(message.chat.id)
+    bot.send_message(message.chat.id, "Последний запрос сброшен")
+
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message: types.Message) -> None:
     """

@@ -295,6 +295,7 @@ def delete_last_story(id_user: int) -> None:
     Удаляем запись в БД, Сначала вытаскиаем все записи, потом берем последнюю в списке - она же будет последней по
     времени. Берем время, создаем запрос на удаление и удаляем
     """
+
     sql = "SELECT date_create FROM users WHERE id_user=?"
     cursor.execute(sql, (id_user, ))
 
