@@ -20,23 +20,38 @@ headers: dict = {
 @bot.message_handler(commands=['restart'])
 def restart(message: types.Message) -> None:
     """
-    Сброс параметров последнего запроса
+    Перезапустить бота, если последний запрос не был завершен, то удаляем его.
     """
-    history.delete_last_story(message.chat.id)
-    bot.send_message(message.chat.id, "Последний запрос сброшен")
+    if not history.check_completed(message.chat.id):
+        history.delete_last_story(message.chat.id)
+    send_welcome(message)
 
 
-@bot.message_handler(commands=['start', 'help'])
+@bot.message_handler(commands=['help'])
+def send_help(message: types.Message) -> None:
+    """
+    Ответ на команду help
+    """
+    bot.send_message(message.chat.id, "\n/lowprice - вывод самых дешевых отелей в городе"
+                                      "\n/highprice - вывод самых дорогих отелей в городе"
+                                      "\n/bestdeal - вывод отелей, наиболее подходящих по цене и расположению от центра"
+                                      "\n/history - вывод истории поиска отелей"
+                                      "\n/restart - перезапустить бота")
+
+
+@bot.message_handler(commands=['start'])
 def send_welcome(message: types.Message) -> None:
     """
-    Ответ на команды start, help
+    Ответ на команду start
     """
-    bot.send_message(message.chat.id, "Привет. Я помогу тебе найти отель. Команды:"
+    bot.send_sticker(message.chat.id, configs.hello())
+    bot.send_message(message.chat.id, "Привет. Я помогу тебе найти отель в любом городе. Доступные команды:"
                                       "\n/help - помощь по командам бота"
                                       "\n/lowprice - вывод самых дешевых отелей в городе"
                                       "\n/highprice - вывод самых дорогих отелей в городе"
                                       "\n/bestdeal - вывод отелей, наиболее подходящих по цене и расположению от центра"
-                                      "\n/history - вывод истории поиска отелей")
+                                      "\n/history - вывод истории поиска отелей"
+                                      "\n/restart - перезапустить бота")
 
 
 @bot.message_handler(commands=['lowprice'])
@@ -52,7 +67,7 @@ def send_low_price_hotels(message: types.Message) -> None:
     id_user: int = message.from_user.id
     date_create: str = history.create_user(id_user, 'lowprice')
 
-    city = bot.send_message(message.chat.id, 'Где ищем?')
+    city = bot.send_message(message.chat.id, 'Введите город:')
     bot.register_next_step_handler(city, check_city, date_create)
 
 
@@ -74,7 +89,7 @@ def send_high_price_hotels(message: types.Message) -> None:
 
 
 @bot.message_handler(commands=['bestdeal'])
-def send_high_price_hotels(message: types.Message) -> None:
+def send_bestdeal_hotels(message: types.Message) -> None:
     """
     Ответ на команду bestdeal
     Спрашиваем у пользователя в каком городе будем искать отель и переходим к функции проверки города в API hotels
@@ -108,7 +123,7 @@ def send_history(message: types.Message) -> None:
         for story in hist:
             restart_button = types.InlineKeyboardMarkup()
             data: str = ''.join([story[-1], 'history'])
-            button = types.InlineKeyboardButton(text='Повторить запрос', callback_data=data)
+            button = types.InlineKeyboardButton(text='🔄  Повторить запрос', callback_data=data)
             restart_button.add(button)
             bot.send_message(message.chat.id, ''.join(story[:-1]), reply_markup=restart_button)
     else:
@@ -122,21 +137,38 @@ def check_city(message: types.Message, date_create: str) -> None:
     В callback передаваемые данных передаем id города, который выбрал пользователь и date_create
     Записываем отдельную таблицу в БД(содержит только город и id), чтобы в call_back_handler по id определить
     название города и отправить в чат с пользователем
+    Если город не найден, выведем соответствующее сообщение и выведем доступный список команд
     :param date_create: время ввода команды
     :param message: введенный пользователем город
     """
-    city: str = message.text
-    cities: List[List[str]] = lowprice.check_city(city)
-    cities_button = types.InlineKeyboardMarkup()
+    if message.text == '/restart':
+        restart(message)
 
-    for city in cities:
-        history.create_city(city[0], city[1])
+    else:
+        city: str = message.text
+        cities: List[List[str]] = lowprice.check_city(city)
+        cities_button = types.InlineKeyboardMarkup()
 
-        data: str = '|'.join([city[1], date_create])
-        button = types.InlineKeyboardButton(text=city[0], callback_data=data)
-        cities_button.add(button)
+        if not cities:
+            bot.send_message(message.chat.id, 'Город не найден')
+            command = history.get_command(message.chat.id, date_create)
+            history.delete_last_story(message.chat.id)
+            if command == 'lowprice':
+                send_low_price_hotels(message)
+            elif command == 'highprice:':
+                send_high_price_hotels(message)
+            else:
+                send_bestdeal_hotels(message)
+        else:
+            for city in cities:
+                history.create_city(city[0], city[1])
 
-    bot.send_message(message.chat.id, 'Выберите город:', reply_markup=cities_button)
+                data: str = '|'.join([city[1], date_create])
+                text = '❓️{}'.format(city[0])
+                button = types.InlineKeyboardButton(text=text, callback_data=data)
+                cities_button.add(button)
+
+            bot.send_message(message.chat.id, 'Выберите город:', reply_markup=cities_button)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -151,6 +183,7 @@ def answer(call: types.CallbackQuery) -> None:
     В завимимости от команды пользователя отправляем в следующую функцию
     """
     if call.data.endswith('history'):
+        bot.answer_callback_query(callback_query_id=call.id, show_alert=False, text='Секундочку...')
         show_result(call.message.chat.id, call.data[:-7])
     else:
         data: List[str] = call.data.split('|')
@@ -190,15 +223,19 @@ def ask_distance(message: types.Message, date_create: str) -> None:
     :param date_create: Дата ввода команды пользователем
     :param message: диапазон цен пользователя
     """
-    try:
-        prices: List[str] = message.text.split(' ')
-        history.set_price(prices, message.chat.id, date_create)
+    if message.text == '/restart':
+        restart(message)
+    else:
+        try:
+            prices: List[str] = message.text.split(' ')
+            history.set_price(prices, message.chat.id, date_create)
 
-        user_distance: types.Message = bot.send_message(message.chat.id, 'Введите диапазон расстояния от центра '
-                                                                         'в километрах, напрмер - "0.5 2"')
-        bot.register_next_step_handler(user_distance, check_distance, date_create)
-    except (IndexError, SyntaxError, ValueError):
-        ask_price(message.chat.id, date_create)
+            user_distance: types.Message = bot.send_message(message.chat.id, 'Введите диапазон расстояния от центра '
+                                                                             'в километрах (через пробел), '
+                                                                             'например - "0.5 2"')
+            bot.register_next_step_handler(user_distance, check_distance, date_create)
+        except (IndexError, SyntaxError, ValueError):
+            ask_price(message.chat.id, date_create)
 
 
 def check_distance(message: types.Message, date_create: str) -> None:
@@ -207,14 +244,18 @@ def check_distance(message: types.Message, date_create: str) -> None:
     :param date_create: Дата ввода команды пользователем
     :param message: диапазон расстояний от центра
     """
-    try:
-        distances: List[str] = message.text.split(' ')
-        history.set_distance(distances, message.chat.id, date_create)
-        ask_number_hotels(message.chat.id, date_create)
-    except (IndexError, SyntaxError, ValueError):
-        user_distance: types.Message = bot.send_message(message.chat.id, 'Введите диапазон расстояния от центра '
-                                                                         'в километрах, напрмер - "0.5 2"')
-        bot.register_next_step_handler(user_distance, check_distance)
+    if message.text == '/restart':
+        restart(message)
+    else:
+        try:
+            distances: List[str] = message.text.split(' ')
+            history.set_distance(distances, message.chat.id, date_create)
+            ask_number_hotels(message.chat.id, date_create)
+        except (IndexError, SyntaxError, ValueError):
+            user_distance: types.Message = bot.send_message(message.chat.id, 'Введите диапазон расстояния от центра '
+                                                                             'в километрах (через пробел), '
+                                                                             'например - "0.5 2"')
+            bot.register_next_step_handler(user_distance, check_distance, date_create)
 
 
 def ask_number_hotels(id_user: int, date_create: str) -> None:
@@ -248,23 +289,26 @@ def ask_photo(message: types.Message, date_create: str) -> None:
     :param date_create: Дата ввода команды пользователем
     :param message: кол-во отелей, запрошенное пользователем
     """
-    try:
-        count_of_hotels: int = int(message.text)
-        if count_of_hotels > configs.count_of_hotels:
-            count_of_hotels: int = configs.count_of_hotels
-        history.set_count_of_hotels(message.chat.id, count_of_hotels, date_create)
+    if message.text == '/restart':
+        restart(message)
+    else:
+        try:
+            count_of_hotels: int = int(message.text)
+            if count_of_hotels > configs.count_of_hotels:
+                count_of_hotels: int = configs.count_of_hotels
+            history.set_count_of_hotels(message.chat.id, count_of_hotels, date_create)
 
-        keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
-                                             resize_keyboard=True,
-                                             input_field_placeholder='да/нет')
-        keyboard.row('да', 'нет')
-        photo_desire: types.Message = bot.send_message(message.chat.id, 'Хотите увидеть фотографии отелей?',
-                                                       reply_markup=keyboard)
-        bot.register_next_step_handler(photo_desire, ask_number_photo, date_create)
-        types.ReplyKeyboardRemove()
-    except ValueError:
-        bot.reply_to(message, 'Это должно быть целое число. Попробуйте еще раз.')
-        ask_number_hotels(message.chat.id, date_create)
+            keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                                 resize_keyboard=True,
+                                                 input_field_placeholder='да/нет')
+            keyboard.row('да', 'нет')
+            photo_desire: types.Message = bot.send_message(message.chat.id, 'Хотите увидеть фотографии отелей?',
+                                                           reply_markup=keyboard)
+            bot.register_next_step_handler(photo_desire, ask_number_photo, date_create)
+            types.ReplyKeyboardRemove()
+        except ValueError:
+            bot.reply_to(message, 'Это должно быть целое число. Попробуйте еще раз.')
+            ask_number_hotels(message.chat.id, date_create)
 
 
 def ask_number_photo(message: types.Message, date_create: str) -> None:
@@ -277,25 +321,25 @@ def ask_number_photo(message: types.Message, date_create: str) -> None:
     :param date_create: Дата ввода команды пользователем
     :param message: ответ на "хотите увидеть фотографии?"
     """
-
-    if message.text.lower() == 'нет':
-        history.set_photo(message.chat.id, False, date_create)
-        history.set_count_of_photo(message.chat.id, 0, date_create)
-        bot.send_message(message.chat.id, 'Обзваниваю отели. Подождите, пожалуйста',
-                         reply_markup=types.ReplyKeyboardRemove())
-        show_result(message.chat.id, date_create)
-    elif message.text.lower() == 'да':
-        history.set_photo(message.chat.id, True, date_create)
-        keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
-                                             resize_keyboard=True,
-                                             input_field_placeholder='не более 6 фотографий')
-        keyboard.row('1', '2', '3')
-        keyboard.row('4', '5', '6')
-        number_photo: types.Message = bot.reply_to(message, 'Сколько?', reply_markup=keyboard)
-        bot.register_next_step_handler(number_photo, check_count_of_photo, date_create)
+    if message.text == '/restart':
+        restart(message)
     else:
-        photo_desire: types.Message = bot.reply_to(message, 'Введите "да" или "нет"')
-        bot.register_next_step_handler(photo_desire, ask_number_photo, date_create)
+        if message.text.lower() == 'нет':
+            history.set_photo(message.chat.id, False, date_create)
+            history.set_count_of_photo(message.chat.id, 0, date_create)
+            show_result(message.chat.id, date_create)
+        elif message.text.lower() == 'да':
+            history.set_photo(message.chat.id, True, date_create)
+            keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                                 resize_keyboard=True,
+                                                 input_field_placeholder='не более 6 фотографий')
+            keyboard.row('1', '2', '3')
+            keyboard.row('4', '5', '6')
+            number_photo: types.Message = bot.reply_to(message, 'Сколько?', reply_markup=keyboard)
+            bot.register_next_step_handler(number_photo, check_count_of_photo, date_create)
+        else:
+            photo_desire: types.Message = bot.reply_to(message, 'Введите "да" или "нет"')
+            bot.register_next_step_handler(photo_desire, ask_number_photo, date_create)
 
 
 def check_count_of_photo(message: types.Message, date_create: str) -> None:
@@ -310,21 +354,22 @@ def check_count_of_photo(message: types.Message, date_create: str) -> None:
     :param date_create: Дата ввода команды пользователем
     :return:
     """
-    count_of_photo: str = message.text
-
-    if (count_of_photo.isdigit() and history.get_photo(message.chat.id, date_create)) or \
-            (count_of_photo == 'нет' and not history.get_photo(message.chat.id, date_create)):
-
-        if count_of_photo.isdigit() and int(count_of_photo) > configs.count_of_photo:
-            count_of_photo = configs.count_of_photo
-
-        history.set_count_of_photo(message.chat.id, count_of_photo, date_create)
-        bot.send_message(message.chat.id, 'Обзваниваю отели. Подождите, пожалуйста',
-                         reply_markup=types.ReplyKeyboardRemove())
-        show_result(message.chat.id, date_create)
+    if message.text == '/restart':
+        restart(message)
     else:
-        number_photo: types.Message = bot.reply_to(message, 'Введите число!')
-        bot.register_next_step_handler(number_photo, check_count_of_photo, date_create)
+        count_of_photo: str = message.text
+
+        if (count_of_photo.isdigit() and history.get_photo(message.chat.id, date_create)) or \
+                (count_of_photo == 'нет' and not history.get_photo(message.chat.id, date_create)):
+
+            if count_of_photo.isdigit() and int(count_of_photo) > configs.count_of_photo:
+                count_of_photo = configs.count_of_photo
+
+            history.set_count_of_photo(message.chat.id, count_of_photo, date_create)
+            show_result(message.chat.id, date_create)
+        else:
+            number_photo: types.Message = bot.reply_to(message, 'Введите число!')
+            bot.register_next_step_handler(number_photo, check_count_of_photo, date_create)
 
 
 def show_result(id_user: int, date_create: str) -> None:
@@ -336,6 +381,9 @@ def show_result(id_user: int, date_create: str) -> None:
     :param date_create: Дата ввода команды пользователем
     :param id_user: id пользователя
     """
+    bot.send_sticker(id_user, configs.wait())
+    bot.send_message(id_user, 'Мне потребуется некоторое время на поиск, пожалуйста, подождите.',
+                     reply_markup=types.ReplyKeyboardRemove())
     if history.get_command(id_user, date_create) == 'lowprice':
         lowprice.get_hotels_info(id_user, date_create)
     elif history.get_command(id_user, date_create) == 'highprice':
@@ -352,7 +400,7 @@ def show_result(id_user: int, date_create: str) -> None:
             bot.send_media_group(id_user, media_group)
 
         link_booking = types.InlineKeyboardMarkup()
-        button = types.InlineKeyboardButton(text='Забронировать номер', url=hotel['booking'])
+        button = types.InlineKeyboardButton(text='🏨   Забронировать номер', url=hotel['booking'])
         link_booking.add(button)
 
         bot.send_message(id_user, 'Название отеля: {name}\n'
@@ -365,10 +413,22 @@ def show_result(id_user: int, date_create: str) -> None:
                          reply_markup=link_booking)
     bot.send_message(id_user, 'Найдено отелей: {}'.format(len(hotels)))
 
+    if not hotels:
+        bot.send_sticker(id_user, configs.fail_searching())
+    else:
+        bot.send_sticker(id_user, configs.good_search())
+
 
 @bot.message_handler(func=lambda message: True)
-def dont_understand(message: types.Message):
+def not_understand(message: types.Message):
+    bot.send_sticker(message.chat.id, configs.misunderstand())
     bot.reply_to(message, "Я вас не понимаю, введите /help для помощи")
 
 
-bot.infinity_polling()
+if __name__ == '__main__':
+    bot.infinity_polling()
+
+
+
+
+

@@ -20,7 +20,8 @@ cursor.execute("CREATE TABLE IF NOT EXISTS users("
                "lower_price TEXT,"
                "top_dist TEXT,"
                "lower_dist TEXT,"
-               "hotels TEXT)")
+               "hotels TEXT, "
+               "completed INTEGER)")
 cursor.execute("CREATE TABLE IF NOT EXISTS cities(id_city TEXT, city TEXT)")
 
 
@@ -227,9 +228,8 @@ def set_hotels(id_user: int, hotels: List[dict], date_create: str) -> None:
     Записываем в БД все отели которые нашли по этой команде (преобразуем список в строку, чтобы записать в БД)
     """
     hotels = str(hotels)
-
-    sql = "UPDATE users SET hotels=? WHERE id_user=? and date_create=?"
-    cursor.execute(sql, (hotels, id_user, date_create))
+    cursor.execute("UPDATE users SET hotels=? WHERE id_user=? and date_create=?", (hotels, id_user, date_create))
+    cursor.execute("UPDATE users SET completed=? WHERE id_user=? and date_create=?", ('1', id_user, date_create))
     connect.commit()
 
 
@@ -263,8 +263,8 @@ def send_history(id_user: int) -> [List, bool]:
     добавляем голое время запроса(276 строка), чтобы можно было в будущем использовать его для повторного вывода
     результата
     """
-    sql: str = "SELECT command, date_create, hotels, city FROM users WHERE id_user=?"
-    cursor.execute(sql, (id_user, ))
+    sql: str = "SELECT command, date_create, hotels, city, completed FROM users WHERE id_user=?"
+    cursor.execute(sql, (id_user,))
     history: List[tuple] = cursor.fetchall()
 
     if len(history) == 0:
@@ -272,7 +272,7 @@ def send_history(id_user: int) -> [List, bool]:
     history: List[tuple] = history[-configs.number_stories:]
     text_for_send: List = []
     for story in history:
-        if not story[3]:
+        if not story[4]:
             continue
         command: str = 'Команда: {}'.format(story[0])
         date_create: str = 'Время: {}'.format(story[1])
@@ -297,7 +297,7 @@ def delete_last_story(id_user: int) -> None:
     """
 
     sql = "SELECT date_create FROM users WHERE id_user=?"
-    cursor.execute(sql, (id_user, ))
+    cursor.execute(sql, (id_user,))
 
     date_tuple = cursor.fetchall()
     date_create = date_tuple[-1][0]
@@ -306,3 +306,20 @@ def delete_last_story(id_user: int) -> None:
     cursor.execute(sql_delete, (id_user, date_create))
 
     connect.commit()
+
+
+def check_completed(id_user: int) -> [None, bool]:
+    """
+    Проверяем пройдена ли вся цепочка вопросов в последнем запросе пользователя. Сначала берем все записи пользователя,
+    потом берем последнюю запись из этого списка и из кортежа тащим первый элемент[0}
+    """
+
+    sql = "SELECT completed FROM users WHERE id_user=?"
+    cursor.execute(sql, (id_user,))
+
+    city_tuple = cursor.fetchall()
+    city_create = city_tuple[-1][0]
+
+    if city_create:
+        return True
+    return False
