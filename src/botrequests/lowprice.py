@@ -30,7 +30,7 @@ def delete_span(string: str) -> str:
     return res_2
 
 
-def check_city(city: str) -> List[List[str]]:
+def check_city(city: str) -> [List[List[str]], None]:
     """
     Делаем запрос и проверяем, все результаты ([имя города, id Города]) с type: 'CITY' записываем в список list_cities
     :param city: Город который ввел пользователь
@@ -41,9 +41,11 @@ def check_city(city: str) -> List[List[str]]:
 
     response_city_id: json = requests.request("GET", url, headers=headers, params=querystring)
     data: json = json.loads(response_city_id.text)
-
-    entities: List[dict] = data['suggestions'][0]['entities']
-    list_cities: List = []
+    try:
+        entities: List[dict] = data['suggestions'][0]['entities']
+        list_cities: List = []
+    except TypeError:
+        return None
 
     for entity in entities:
         if entity['type'] == 'CITY':
