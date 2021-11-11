@@ -411,12 +411,12 @@ def show_result(id_user: int, date_create: str) -> None:
                                                          dist=hotel['distance_to_center'],
                                                          price=hotel['price']),
                          reply_markup=link_booking)
-    bot.send_message(id_user, 'Найдено отелей: {}'.format(len(hotels)))
 
     if not hotels:
         bot.send_sticker(id_user, configs.fail_searching())
     else:
         bot.send_sticker(id_user, configs.good_search())
+    bot.send_message(id_user, 'Найдено отелей: {}'.format(len(hotels)))
 
 
 @bot.message_handler(func=lambda message: True)
@@ -427,8 +427,3 @@ def not_understand(message: types.Message):
 
 if __name__ == '__main__':
     bot.infinity_polling()
-
-
-
-
-
