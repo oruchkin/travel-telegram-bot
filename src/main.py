@@ -235,6 +235,7 @@ def ask_distance(message: types.Message, date_create: str) -> None:
                                                                              'например - "0.5 2"')
             bot.register_next_step_handler(user_distance, check_distance, date_create)
         except (IndexError, SyntaxError, ValueError):
+            bot.send_message(message.chat.id, 'Неверный ввод, попробуйте еще раз.')
             ask_price(message.chat.id, date_create)
 
 
@@ -252,6 +253,7 @@ def check_distance(message: types.Message, date_create: str) -> None:
             history.set_distance(distances, message.chat.id, date_create)
             ask_number_hotels(message.chat.id, date_create)
         except (IndexError, SyntaxError, ValueError):
+            bot.send_message(message.chat.id, 'Неверный ввод, попробуйте еще раз. ')
             user_distance: types.Message = bot.send_message(message.chat.id, 'Введите диапазон расстояния от центра '
                                                                              'в километрах (через пробел), '
                                                                              'например - "0.5 2"')
