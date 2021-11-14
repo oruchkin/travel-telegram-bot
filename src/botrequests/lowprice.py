@@ -4,7 +4,6 @@ from decouple import config
 from typing import List, Optional
 from src.botrequests import history
 import re
-from loguru import logger
 from src import configs
 
 RAPIDAPI_KEY: str = config('RAPIDAPI_KEY')
@@ -31,7 +30,6 @@ def delete_span(string: str) -> str:
     return res_2
 
 
-@logger.catch
 def check_city(city: str) -> [List[List[str]], None]:
     """
     Делаем запрос и проверяем, все результаты ([имя города, id Города]) с type: 'CITY' записываем в список list_cities

@@ -75,7 +75,7 @@ def get_properties_list(id_user: int, page_number: int, date_create: str) -> Lis
     check_out: str = dates[1]
     url = "https://hotels4.p.rapidapi.com/properties/list"
 
-    if float(distances[1]) <= 2.5:
+    if float(distances[1]) <= 2:
         querystring = {"destinationId": history.get_id_city_user(id_user, date_create), "pageNumber": page_number,
                        "pageSize": "25", "checkIn": check_in, "checkOut": check_out, "adults1": "1",
                        "priceMin": prices[0], "priceMax": prices[1], "sortOrder": "DISTANCE_FROM_LANDMARK",

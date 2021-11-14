@@ -7,13 +7,8 @@ from telebot import types
 from src.botrequests import history
 import configs
 from typing import List
-from loguru import logger
 import requests
 
-logger.add('logs/logs.log', level='DEBUG')
-logger.debug('Error')
-logger.info('Information message')
-logger.warning('Warning')
 
 RAPIDAPI_KEY = config('RAPIDAPI_KEY')
 BOT_TOKEN = config('TOKEN')
@@ -217,7 +212,7 @@ def ask_dates(id_user: int, date_create: str) -> None:
     Запрашиваем дату въезда и дату выезда из отеля
     """
     user_dates: types.Message = bot.send_message(id_user, 'Введите желаемые дату въезда и выезда в формате:'
-                                                          '\nГГГГ-ММ-ДД, например:\n2021-01-01 2021-01-25')
+                                                          '\nГГГГ.ММ.ДД, например:\n2021.12.01 2021.12.09')
     bot.register_next_step_handler(user_dates, check_dates, date_create)
 
 
@@ -251,7 +246,7 @@ def ask_price(id_user: int, date_create: str) -> None:
     :param date_create: Дата ввода команды пользователем
     """
 
-    user_price: types.Message = bot.send_message(id_user, 'Введите диапазон цен (в рублях, через пробел), '
+    user_price: types.Message = bot.send_message(id_user, 'Введите диапазон цен за ночь (в рублях, через пробел), '
                                                           'например - "500 2500" ')
     bot.register_next_step_handler(user_price, ask_distance, date_create)
 
@@ -476,7 +471,7 @@ def show_result(id_user: int, date_create: str) -> None:
         else:
             bot.send_sticker(id_user, configs.good_search())
         bot.send_message(id_user, 'Найдено отелей: {}'.format(len(hotels)))
-    except (TypeError, ValueError, KeyError, requests.exceptions.ConnectTimeout):
+    except (TypeError, ValueError, KeyError, requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout):
         bot.send_message(id_user, 'Возникли проблемы с сайтом. Попробуйте позже.')
         history.delete_last_story(id_user)
 
