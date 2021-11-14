@@ -2,10 +2,9 @@ import requests
 import json
 from decouple import config
 from typing import List, Optional
-from datetime import date, timedelta, datetime
 from src.botrequests import history
 import re
-
+from src import configs
 
 RAPIDAPI_KEY: str = config('RAPIDAPI_KEY')
 
@@ -40,7 +39,7 @@ def check_city(city: str) -> List[List[str]]:
     url: str = "https://hotels4.p.rapidapi.com/locations/v2/search"
     querystring: dict = {"query": city, "locale": "ru_RU", "currency": "RUB"}
 
-    response_city_id: json = requests.request("GET", url, headers=headers, params=querystring)
+    response_city_id: json = requests.request("GET", url, headers=headers, params=querystring, timeout=configs.time_out)
     data: json = json.loads(response_city_id.text)
 
     entities: List[dict] = data['suggestions'][0]['entities']
@@ -54,21 +53,26 @@ def check_city(city: str) -> List[List[str]]:
     return list_cities
 
 
-def get_properties_list(id_city: int) -> List[dict]:
+def get_properties_list(id_city: int, date_create: str, id_user: int) -> List[dict]:
     """
     Функция возвращающая список отелей, отсортированным по цене (сначала самые дешевые)
+    :param id_user:
+    :param date_create:
     :param id_city: id города
     :return:  список отелей, в котором хранится информация о каждом отеле
     """
-    today: datetime.date = date.today()
-    check_in: str = str(today + timedelta(days=2))
-    check_out: str = str(today + timedelta(days=3))
+    dates = history.get_dates(id_user, date_create)
+    check_in: str = dates[0]
+    check_out: str = dates[1]
     url: str = "https://hotels4.p.rapidapi.com/properties/list"
-    querystring = {"destinationId": id_city, "pageNumber": "1", "pageSize": "25", "checkIn": check_in,
-                   "checkOut": check_out, "adults1": "1", "sortOrder": "PRICE_HIGHEST_FIRST", "locale": "ru_RU",
-                   "currency": "RUB"}
+    querystring: dict = {"destinationId": id_city, "pageNumber": "1", "pageSize": "25", "checkIn": check_in,
+                         "checkOut": check_out, "adults1": "1", "sortOrder": "PRICE_HIGHEST_FIRST", "locale": "ru_RU",
+                         "currency": "RUB"}
 
-    response_properties_list: json = requests.request("GET", url, headers=headers, params=querystring)
+    response_properties_list: json = requests.request("GET", url,
+                                                      headers=headers,
+                                                      params=querystring,
+                                                      timeout=configs.time_out)
     data: json = json.loads(response_properties_list.text)
     full_list_hotels: List[dict] = data['data']['body']['searchResults']['results']
 
@@ -85,7 +89,7 @@ def get_photo(id_hotel: str, number: int) -> List[str]:
     """
     url: str = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
     querystring: dict = {"id": id_hotel}
-    response_photo: json = requests.request("GET", url, headers=headers, params=querystring)
+    response_photo: json = requests.request("GET", url, headers=headers, params=querystring, timeout=configs.time_out)
     data: json = json.loads(response_photo.text)
 
     list_photo: List = []
@@ -111,7 +115,7 @@ def get_hotels_info(id_user, date_create) -> None:
     """
     count: int = 0
     top: List = []
-    list_hotels: List[dict] = get_properties_list(history.get_id_city_user(id_user, date_create))
+    list_hotels: List[dict] = get_properties_list(history.get_id_city_user(id_user, date_create), date_create, id_user)
     for hotel in list_hotels:
         hotel_info: dict = dict()
         count += 1
@@ -124,7 +128,10 @@ def get_hotels_info(id_user, date_create) -> None:
             address: Optional[str] = None
         distance_to_center: str = hotel['landmarks'][0]['distance']
         price: str = hotel['ratePlan']['price']['current']
-
+        days_booking: int = history.get_days(id_user, date_create)
+        if days_booking > 1:
+            price_for_night = round(float(hotel['ratePlan']['price']['exactCurrent']) / days_booking, 2)
+            hotel_info['price_for_night']: str = ' '.join([str(price_for_night), 'RUB'])
         hotel_info['name']: str = name
         hotel_info['address']: str = address
         hotel_info['distance_to_center']: str = distance_to_center

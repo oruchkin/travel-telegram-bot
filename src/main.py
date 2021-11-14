@@ -7,14 +7,17 @@ from telebot import types
 from src.botrequests import history
 import configs
 from typing import List
+from loguru import logger
+import requests
+
+logger.add('logs/logs.log', level='DEBUG')
+logger.debug('Error')
+logger.info('Information message')
+logger.warning('Warning')
 
 RAPIDAPI_KEY = config('RAPIDAPI_KEY')
 BOT_TOKEN = config('TOKEN')
 bot = telebot.TeleBot(BOT_TOKEN)
-headers: dict = {
-    'x-rapidapi-host': "hotels4.p.rapidapi.com",
-    'x-rapidapi-key': RAPIDAPI_KEY
-}
 
 
 @bot.message_handler(commands=['restart'])
@@ -138,6 +141,8 @@ def check_city(message: types.Message, date_create: str) -> None:
     Записываем отдельную таблицу в БД(содержит только город и id), чтобы в call_back_handler по id определить
     название города и отправить в чат с пользователем
     Если город не найден, выведем соответствующее сообщение и выведем доступный список команд
+    Историю удаляем чтобы при шаге назад не оставлять эту строчку пустой и не засорять историю.
+    Если тип cities - строка, значит возникла ошибка - выводим ее пользователю и делаем шаг назад
     :param date_create: время ввода команды
     :param message: введенный пользователем город
     """
@@ -146,10 +151,19 @@ def check_city(message: types.Message, date_create: str) -> None:
 
     else:
         city: str = message.text
-        cities: List[List[str]] = lowprice.check_city(city)
+        cities: [List[List[str]], str] = lowprice.check_city(city)
         cities_button = types.InlineKeyboardMarkup()
-
-        if not cities:
+        if type(cities) is str:
+            bot.send_message(message.chat.id, cities)
+            command = history.get_command(message.chat.id, date_create)
+            history.delete_last_story(message.chat.id)
+            if command == 'lowprice':
+                send_low_price_hotels(message)
+            elif command == 'highprice:':
+                send_high_price_hotels(message)
+            else:
+                send_bestdeal_hotels(message)
+        elif not cities:
             bot.send_message(message.chat.id, 'Город не найден')
             command = history.get_command(message.chat.id, date_create)
             history.delete_last_story(message.chat.id)
@@ -195,19 +209,48 @@ def answer(call: types.CallbackQuery) -> None:
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text)
         history.set_city_user(id_city, city, call.message.chat.id, date_create)
 
-        if history.get_command(call.message.chat.id, date_create) == 'bestdeal':
-            ask_price(call.message.chat.id, date_create)
+        ask_dates(call.message.chat.id, date_create)
+
+
+def ask_dates(id_user: int, date_create: str) -> None:
+    """
+    Запрашиваем дату въезда и дату выезда из отеля
+    """
+    user_dates: types.Message = bot.send_message(id_user, 'Введите желаемые дату въезда и выезда в формате:'
+                                                          '\nГГГГ-ММ-ДД, например:\n2021-01-01 2021-01-25')
+    bot.register_next_step_handler(user_dates, check_dates, date_create)
+
+
+def check_dates(message: types.Message, date_create) -> None:
+    """
+    Поверяем правильность введенной даты, если функция history.set_dates() ничего не возвращает, значит введенная дата
+    в порядке, если возвращает - выводим пользователю ошибку (return в этой функции) и делаем шаг назад
+    """
+    if message.text == '/restart':
+        restart(message)
+    else:
+        check = history.set_dates(message.chat.id, date_create, message.text)
+        if not check:
+            if history.get_command(message.chat.id, date_create) == 'bestdeal':
+                ask_price(message.chat.id, date_create)
+            else:
+                ask_number_hotels(message.chat.id, date_create)
         else:
-            ask_number_hotels(call.message.chat.id, date_create)
+            bot.send_message(message.chat.id, check)
+            ask_dates(message.chat.id, date_create)
 
 
 def ask_price(id_user: int, date_create: str) -> None:
     """
+    записываем в историю даты въезда и выезда. Если в истории записаны даты въезда и выезда, значит, это возврат из
+    функции ask_distance и пользователю нужно предложить еще раз ввести диапазон цен. А если не записаны, значит
+    мы впервые сюда попали и нужно записать даты.
     Спрашиваем у пользователя диапазон цен.
     Переходим в функцию запроса дистанции от центра
-    :param id_user: id пользователя
+    :param id_user:
     :param date_create: Дата ввода команды пользователем
     """
+
     user_price: types.Message = bot.send_message(id_user, 'Введите диапазон цен (в рублях, через пробел), '
                                                           'например - "500 2500" ')
     bot.register_next_step_handler(user_price, ask_distance, date_create)
@@ -265,8 +308,8 @@ def ask_number_hotels(id_user: int, date_create: str) -> None:
     Запрос кол-ва отелей
     Создаем клавиатуру из 9 кнопок и отправляем пользователю
     Переходим в функцию запроса необходимости вывода фотографий
+    :param id_user:
     :param date_create: Дата ввода команды пользователем
-    :param id_user: id пользователя
     """
 
     keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True,
@@ -380,45 +423,62 @@ def show_result(id_user: int, date_create: str) -> None:
     В зависимости от команды, вызываем функцию формирования списка отелей и записи его в БД из полученных ранее данных,
     а потом записываем этот список в переменную из БД
     В выводе к каждому отелю прикрепляем кнопку с ссылкой на бронирование номера
+    Если попадается исключение, значит сайт API глючит - сообщаем пользователю
     :param date_create: Дата ввода команды пользователем
     :param id_user: id пользователя
     """
-    bot.send_sticker(id_user, configs.wait())
-    bot.send_message(id_user, 'Мне потребуется некоторое время на поиск, пожалуйста, подождите.',
-                     reply_markup=types.ReplyKeyboardRemove())
-    if history.get_command(id_user, date_create) == 'lowprice':
-        lowprice.get_hotels_info(id_user, date_create)
-    elif history.get_command(id_user, date_create) == 'highprice':
-        highprice.get_hotels_info(id_user, date_create)
-    else:
-        bestdeal.get_hotels_info(id_user, date_create)
+    try:
+        bot.send_sticker(id_user, configs.wait())
+        bot.send_message(id_user, 'Мне потребуется некоторое время на поиск, пожалуйста, подождите.',
+                         reply_markup=types.ReplyKeyboardRemove())
+        if history.get_command(id_user, date_create) == 'lowprice':
+            lowprice.get_hotels_info(id_user, date_create)
+        elif history.get_command(id_user, date_create) == 'highprice':
+            highprice.get_hotels_info(id_user, date_create)
+        else:
+            bestdeal.get_hotels_info(id_user, date_create)
 
-    hotels: List[dict] = history.get_hotels(id_user, date_create)
+        hotels: List[dict] = history.get_hotels(id_user, date_create)
 
-    for hotel in hotels:
+        for hotel in hotels:
 
-        if history.get_photo(id_user, date_create):
-            media_group: List[types.InputMediaPhoto] = history.create_media_group(hotel['photo'])
-            bot.send_media_group(id_user, media_group)
+            if history.get_photo(id_user, date_create):
+                media_group: List[types.InputMediaPhoto] = history.create_media_group(hotel['photo'])
+                bot.send_media_group(id_user, media_group)
 
-        link_booking = types.InlineKeyboardMarkup()
-        button = types.InlineKeyboardButton(text='🏨   Забронировать номер', url=hotel['booking'])
-        link_booking.add(button)
+            link_booking = types.InlineKeyboardMarkup()
+            button = types.InlineKeyboardButton(text='🏨   Забронировать номер', url=hotel['booking'])
+            link_booking.add(button)
+            if history.get_days(id_user, date_create) > 1:
+                bot.send_message(id_user, 'Название отеля: {name}\n'
+                                          'Адрес: {address}\n'
+                                          'Расстояние до центра: {dist}\n'
+                                          'Сумма: {price}\n'
+                                          'Цена за ночь: {price_for_night}'.format(name=hotel['name'],
+                                                                                   address=hotel['address'],
+                                                                                   dist=hotel['distance_to_center'],
+                                                                                   price=hotel['price'],
+                                                                                   price_for_night=hotel[
+                                                                                       'price_for_night']),
+                                 reply_markup=link_booking)
+            else:
+                bot.send_message(id_user, 'Название отеля: {name}\n'
+                                          'Адрес: {address}\n'
+                                          'Расстояние до центра: {dist}\n'
+                                          'Цена за ночь: {price}\n'.format(name=hotel['name'],
+                                                                           address=hotel['address'],
+                                                                           dist=hotel['distance_to_center'],
+                                                                           price=hotel['price']),
+                                 reply_markup=link_booking)
 
-        bot.send_message(id_user, 'Название отеля: {name}\n'
-                                  'Адрес: {address}\n'
-                                  'Расстояние до центра: {dist}\n'
-                                  'Цена: {price}'.format(name=hotel['name'],
-                                                         address=hotel['address'],
-                                                         dist=hotel['distance_to_center'],
-                                                         price=hotel['price']),
-                         reply_markup=link_booking)
-
-    if not hotels:
-        bot.send_sticker(id_user, configs.fail_searching())
-    else:
-        bot.send_sticker(id_user, configs.good_search())
-    bot.send_message(id_user, 'Найдено отелей: {}'.format(len(hotels)))
+        if not hotels:
+            bot.send_sticker(id_user, configs.fail_searching())
+        else:
+            bot.send_sticker(id_user, configs.good_search())
+        bot.send_message(id_user, 'Найдено отелей: {}'.format(len(hotels)))
+    except (TypeError, ValueError, KeyError, requests.exceptions.ConnectTimeout):
+        bot.send_message(id_user, 'Возникли проблемы с сайтом. Попробуйте позже.')
+        history.delete_last_story(id_user)
 
 
 @bot.message_handler(func=lambda message: True)

@@ -8,3 +8,4 @@ src/botrequests/__pycache__/
 src/botrequests/bestdeal.py
 testSQL.py
 bd.py
+logs/

@@ -2,7 +2,6 @@ import requests
 import json
 from decouple import config
 from typing import List, Optional
-from datetime import date, timedelta
 from src.botrequests import history
 import re
 from src import configs
@@ -41,7 +40,10 @@ def check_city(city: str) -> List[List[str]]:
     url: str = "https://hotels4.p.rapidapi.com/locations/v2/search"
     querystring: dict = {"query": city, "locale": "ru_RU", "currency": "RUB"}
 
-    response_city_id: json = requests.request("GET", url, headers=headers, params=querystring)
+    response_city_id: json = requests.request("GET", url,
+                                              headers=headers,
+                                              params=querystring,
+                                              timeout=configs.time_out)
     data: json = json.loads(response_city_id.text)
 
     entities: List[dict] = data['suggestions'][0]['entities']
@@ -68,9 +70,9 @@ def get_properties_list(id_user: int, page_number: int, date_create: str) -> Lis
     """
     distances: tuple[int] = history.get_distance(id_user, date_create)
     prices: tuple[int] = history.get_price(id_user, date_create)
-    today = date.today()
-    check_in = str(today + timedelta(days=2))
-    check_out = str(today + timedelta(days=3))
+    dates = history.get_dates(id_user, date_create)
+    check_in: str = dates[0]
+    check_out: str = dates[1]
     url = "https://hotels4.p.rapidapi.com/properties/list"
 
     if float(distances[1]) <= 2.5:
@@ -84,7 +86,10 @@ def get_properties_list(id_user: int, page_number: int, date_create: str) -> Lis
                        "priceMin": prices[0], "priceMax": prices[1], "sortOrder": "PRICE", "locale": "ru_RU",
                        "currency": "RUB"}
 
-    response_properties_list: json = requests.request("GET", url, headers=headers, params=querystring)
+    response_properties_list: json = requests.request("GET", url,
+                                                      headers=headers,
+                                                      params=querystring,
+                                                      timeout=configs.time_out)
     data: json = json.loads(response_properties_list.text)
     full_list_hotels: List[dict] = data['data']['body']['searchResults']['results']
 
@@ -101,7 +106,7 @@ def get_photo(id_hotel: str, number: int) -> List[str]:
     """
     url: str = "https://hotels4.p.rapidapi.com/properties/get-hotel-photos"
     querystring: dict = {"id": id_hotel}
-    response_photo: json = requests.request("GET", url, headers=headers, params=querystring)
+    response_photo: json = requests.request("GET", url, headers=headers, params=querystring, timeout=configs.time_out)
     data: json = json.loads(response_photo.text)
 
     list_photo: List = []
@@ -163,6 +168,11 @@ def get_hotels_info(id_user, date_create, count: int = 0, page_number: int = 1, 
                 address: Optional[str] = None
             distance_to_center: str = hotel['landmarks'][0]['distance']
             price: str = hotel['ratePlan']['price']['current']
+            days_booking: int = history.get_days(id_user, date_create)
+            if days_booking > 1:
+                price_for_night = round(float(hotel['ratePlan']['price']['exactCurrent']) / days_booking, 2)
+                hotel_info['price_for_night']: str = ' '.join([str(price_for_night), 'RUB'])
+
             hotel_info['name']: str = name
             hotel_info['address']: str = address
             hotel_info['distance_to_center']: str = distance_to_center

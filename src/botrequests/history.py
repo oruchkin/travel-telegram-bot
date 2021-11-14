@@ -21,7 +21,10 @@ cursor.execute("CREATE TABLE IF NOT EXISTS users("
                "top_dist TEXT,"
                "lower_dist TEXT,"
                "hotels TEXT, "
-               "completed INTEGER)")
+               "completed INTEGER,"
+               "check_in TEXT,"
+               "check_out TEXT,"
+               "days TEXT)")
 cursor.execute("CREATE TABLE IF NOT EXISTS cities(id_city TEXT, city TEXT)")
 
 
@@ -323,3 +326,58 @@ def check_completed(id_user: int) -> [None, bool]:
     if city_create:
         return True
     return False
+
+
+def set_dates(id_user: int, date_create: str, dates: str):
+    """
+    Записываем в БД даты заезда и выезда из отеля.
+    :param date_create: Дата ввода команды
+    :param id_user: id пользователя
+    :param dates: Дата въезда и дата выезда
+    """
+    try:
+        full_pattern = r'(\d{4}[.,/\;:-]\d{2}[.,/\;:-]\d{2}) +(\d{4}[.,/\;:-]\d{2}[.,/\;:-]\d{2})'
+        pattern_for_one_date = r'[.,/\;:]'
+        check_full_string = re.search(full_pattern, dates)
+        today = datetime.date.today()
+        if check_full_string:
+            check_in = check_full_string[1]
+            check_out = check_full_string[2]
+            check_in = re.sub(pattern_for_one_date, '-', check_in)
+            check_out = re.sub(pattern_for_one_date, '-', check_out)
+            date_check_in = datetime.datetime.strptime(check_in, '%Y-%m-%d')
+            date_check_out = datetime.datetime.strptime(check_out, '%Y-%m-%d')
+            days = (date_check_out - date_check_in).days
+            if date_check_in > date_check_out:
+                return 'Введите сперва дату заезда, а потом дату выезда'
+            elif not date_check_in > date_check_out and not date_check_in < date_check_out:
+                return 'Дата заезда и выезда должны отличаться'
+            elif today > date_check_in.date():
+                return 'Делориан в ремонте, в прошлом бронировать не получится'
+            else:
+                sql = "UPDATE users SET check_in=?, check_out=?, days=? WHERE id_user=? and date_create=?"
+                cursor.execute(sql, (check_in, check_out, days, id_user, date_create))
+                connect.commit()
+        else:
+            return 'Некорректный ввод'
+    except ValueError:
+        return 'Некорректная дата'
+
+
+def get_dates(id_user: int, date_create: str) -> tuple[str]:
+    """
+    По id пользователя возвращаем кортеж из границ дистанции от центра
+    """
+    cursor.execute("SELECT check_in, check_out FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
+    dates: tuple[str] = cursor.fetchone()
+
+    return dates
+
+
+def get_days(id_user: int, date_create: str) -> int:
+    """
+    Возвращает кол-во дней, на которое бронируется отель
+    """
+    cursor.execute("SELECT days FROM users WHERE id_user=? and date_create=?", (id_user, date_create))
+    days = cursor.fetchone()
+    return int(days[0])
