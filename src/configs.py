@@ -69,7 +69,6 @@ def good_search() -> str:
                                   'CAACAgIAAxkBAAEDQzJhjYZVasuGkPzUWjrjzl8od9gdwQACqg0AAh4dmUun3jjGWXCp9CIE',
                                   'CAACAgIAAxkBAAEDQzZhjYa-jLGHOildFwHWaX8Kt8vm5QAC7AADwZGyJM9plDKLR7hyIgQ',
                                   'CAACAgIAAxkBAAEDQ39hjZVocAABGTxEuVC_JvFMomtwZj0AAt4AA1advQql73c4VYMVxCIE',
-                                  'CAACAgIAAxkBAAEDQ4NhjZWPEDwfI2L1S-mgOrdzAAHXOEYAAqwNAALifAhKHHYPwoZ-Lk8iBA',
                                   'CAACAgIAAxkBAAEDQ4VhjZWlxIq_pEqYRtNPposChA_7KAACFgADlp-MDhoIJB4TZLWPIgQ',
                                   'CAACAgIAAxkBAAEDQ4dhjZW3rDqhswpH2RFyC69ZJNtaFgACTAADRA3PF00ba9Q6BAfQIgQ',
                                   'CAACAgIAAxkBAAEDQ4thjZXhCSr5DhmNaw9o4MwOYZ9A7gACPg0AAtLXoUr3veGQuCeSqyIE',

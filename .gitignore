@@ -9,3 +9,4 @@ src/botrequests/bestdeal.py
 testSQL.py
 bd.py
 logs/
+database.db
